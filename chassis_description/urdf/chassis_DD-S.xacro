@@ -4,10 +4,10 @@
   <!-- ═══════════════════════════════════════════
        Chassis geometry parameters
   ══════════════════════════════════════════════ -->
-  <xacro:property name="front_x"   value="0.27732"  />  <!-- wheelbase/2 front  (m) -->
-  <xacro:property name="rear_x"    value="-0.27268" />  <!-- wheelbase/2 rear   (m) -->
+  <xacro:property name="front_x"   value="0.275"    />  <!-- wheelbase/2 front  (m) -->
+  <xacro:property name="rear_x"    value="-0.275"   />  <!-- wheelbase/2 rear   (m) -->
   <xacro:property name="track_y"   value="0.31105"  />  <!-- half track width   (m) -->
-  <xacro:property name="wheel_z"   value="0.0765"   />  <!-- wheel axis height  (m) -->
+  <xacro:property name="wheel_z"   value="0"        />  <!-- wheel axis height  (m) -->
   <xacro:property name="wheel_radius" value="0.2032"  />  <!-- wheel radius, 16" diameter (m) -->
 
 
@@ -47,7 +47,7 @@
       <visual>
         <origin xyz="0 0 0" rpy="0 0 0" />
         <geometry>
-          <mesh filename="package://chassis_description/meshes/DD-s/wheel_${name}_link.STL" />
+          <mesh filename="package://chassis_description/meshes/DD-S/wheel_${name}_link.STL" />
         </geometry>
         <material name="wheel_${name}_color">
           <color rgba="${color} 1" />
@@ -56,7 +56,7 @@
       <collision>
         <origin xyz="0 0 0" rpy="0 0 0" />
         <geometry>
-          <mesh filename="package://chassis_description/meshes/DD-s/wheel_${name}_link.STL" />
+          <mesh filename="package://chassis_description/meshes/DD-S/wheel_${name}_link.STL" />
         </geometry>
       </collision>
     </link>
@@ -86,7 +86,7 @@
   ══════════════════════════════════════════════ -->
   <link name="base_link">
     <inertial>
-      <origin xyz="0.0031731 -0.0002491 0.14649" rpy="0 0 0" />
+      <origin xyz="0.00084846 -0.0002491 0.06999" rpy="0 0 0" />
       <mass value="11.221" />
       <inertia
         ixx="0.33572"  ixy="-3.5828E-09" ixz="-0.00054353"
@@ -96,7 +96,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0" />
       <geometry>
-        <mesh filename="package://chassis_description/meshes/DD-s/base_link.STL" />
+        <mesh filename="package://chassis_description/meshes/DD-S/base_link.STL" />
       </geometry>
       <material name="white">
         <color rgba="1 1 1 1" />
@@ -105,7 +105,7 @@
     <collision>
       <origin xyz="0 0 0" rpy="0 0 0" />
       <geometry>
-        <mesh filename="package://chassis_description/meshes/DD-s/base_link.STL" />
+        <mesh filename="package://chassis_description/meshes/DD-S/base_link.STL" />
       </geometry>
     </collision>
   </link>
