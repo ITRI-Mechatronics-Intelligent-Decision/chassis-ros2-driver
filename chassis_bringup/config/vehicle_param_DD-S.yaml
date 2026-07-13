@@ -4,7 +4,7 @@ chassis_driver:
     baudrate: 19200
     serial_timeout: 0.5
     send_interval: 0.1
-    gear_ratio: 30.0
+    gear_ratio: 50.0
     wheel_radius: 0.2032
     wheel_separation: 0.6221
     cmd_left_direction: 1
