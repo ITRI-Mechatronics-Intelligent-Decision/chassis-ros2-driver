@@ -1,9 +1,9 @@
 # ITRI 底盤 ROS2 驅動層（chassis-ros2-driver）
 
-適用機型：ITRI 四輪底盤
+適用機型：ITRI DD-S/DD-M/TD-S/TD-M
 文件日期：2026 年 7 月
 
-## 專案簡介
+## 簡介
 
 `chassis_driver` 是底盤與上位應用之間的轉譯層，將底盤控制板（VCU）的 RS485 二進位通訊協定封裝為標準 ROS2 介面。上位開發者不需要處理序列通訊、封包編解碼、運動學換算，只需訂閱／發布標準 topic，即可直接串接 Nav2、SLAM、`robot_localization` 等現成 ROS2 生態系套件。
 
@@ -99,8 +99,10 @@ ros2 launch chassis_bringup bringup.launch.py
 
 | 參數 | 說明 | 預設值 |
 |---|---|---|
-| `xacro_file` | 指定 `chassis_description/urdf/` 底下的 xacro 檔名 | `chassis.urdf.xacro` |
-| `vehicle_param_file` | 指定 `chassis_bringup/config/` 底下的參數檔名 | `vehicle_param.yaml` |
+| `xacro_file` | 指定 `chassis_description/urdf/` 底下的 xacro 檔名 | `chassis_DD-S.xacro` |
+| `vehicle_param_file` | 指定 `chassis_bringup/config/` 底下的參數檔名 | `vehicle_param_DD-S.yaml` |
+
+> 依照購買的底盤型號選擇對應的xacro與vehicle_param。
 
 ### 4.5 基本操作驗證
 
