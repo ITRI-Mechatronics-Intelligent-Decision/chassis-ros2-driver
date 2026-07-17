@@ -39,8 +39,16 @@ RX_STRUCT = struct.Struct(">BhHBhHBHhBB2sBB")
 
 class ChassisSerial:
 
-    def __init__(self, port: str, baudrate: int, timeout: float, send_interval: float):
+    def __init__(
+        self,
+        port: str,
+        baudrate: int,
+        timeout: float,
+        send_interval: float,
+        debug: bool = False,
+    ):
         self._send_interval = send_interval
+        self._debug = debug
 
         self._conn = serial.Serial(
             port=port,
@@ -92,11 +100,32 @@ class ChassisSerial:
             tx_packet = self._encode_tx(left_rpm, right_rpm, clear_alarm)
             self._conn.write(tx_packet)
 
+            if self._debug:
+                print(
+                    f"[TX] {tx_packet.hex(' ').upper()} | "
+                    f"L={left_rpm:+d} R={right_rpm:+d} clr={int(clear_alarm)}"
+                )
+
             rx_bytes = self._conn.read(RX_LENGTH)
             state = self._decode_rx(rx_bytes)
             if state is not None:
                 with self._lock:
                     self._latest_state = state
+
+            if self._debug:
+                if state is not None:
+                    print(
+                        f"[RX] {rx_bytes.hex(' ').upper()} | "
+                        f"L={state['left_rpm']:+d} R={state['right_rpm']:+d} "
+                        f"V={state['battery_voltage']:.2f}V "
+                        f"I={state['battery_current']:+.2f}A "
+                        f"SoC={state['battery_soc']}% seq={state['seq_count']}"
+                    )
+                else:
+                    print(
+                        f"[RX] invalid ({len(rx_bytes)} bytes): "
+                        f"{rx_bytes.hex(' ').upper()}"
+                    )
 
             elapsed = time.monotonic() - loop_start
             sleep_time = self._send_interval - elapsed
@@ -135,7 +164,7 @@ class ChassisSerial:
             "right_rpm": m2_rpm,
             "right_hall": m2_hall,
             "right_alarm": bool(m2_alarm),
-            "battery_voltage": voltage_raw * 0.001,
+            "battery_voltage": voltage_raw * 0.01,
             "battery_current": current_raw * 0.001,
             "battery_soc": soc,
             "battery_soh": soh,
