@@ -31,10 +31,11 @@ TX_STRUCT = struct.Struct(">BhhB4sB")
 # h  馬達2 實際轉速 (int16)   H 馬達2 霍爾值 (uint16)   B 馬達2 Alarm (uint8)
 # H  電池電壓原始值 (uint16)  h 電池電流原始值 (int16)
 # B  SoC (uint8)             B SoH (uint8)
-# 2s 保留 (2 bytes)
+# B  車載資訊 (uint8)[位元遮罩]
+# B  保留
 # B  通訊狀態計數 (uint8)
 # B  結束位 (uint8)
-RX_STRUCT = struct.Struct(">BhHBhHBHhBB2sBB")
+RX_STRUCT = struct.Struct(">BhHBhHBHhBBBBBB")
 
 
 class ChassisSerial:
@@ -45,7 +46,7 @@ class ChassisSerial:
         baudrate: int,
         timeout: float,
         send_interval: float,
-        debug: bool = False,
+        debug: bool = False,  ##! 檢修485通訊用
     ):
         self._send_interval = send_interval
         self._debug = debug
@@ -152,10 +153,16 @@ class ChassisSerial:
         (start, m1_rpm, m1_hall, m1_alarm,
          m2_rpm, m2_hall, m2_alarm,
          voltage_raw, current_raw, soc, soh,
-         _reserved, seq_count, end) = unpacked
+         vehicle_status, _reserved_byte18, seq_count, end) = unpacked
 
         if start != START_BYTE or end != END_BYTE:
             return None
+
+        # 解析車載資訊位元遮罩
+        emergency_stop = bool(vehicle_status & 0x01)
+        handle_offline = bool(vehicle_status & 0x02)
+        driver1_offline = bool(vehicle_status & 0x04)
+        driver2_offline = bool(vehicle_status & 0x08)
 
         return {
             "left_rpm": m1_rpm,
@@ -165,8 +172,12 @@ class ChassisSerial:
             "right_hall": m2_hall,
             "right_alarm": bool(m2_alarm),
             "battery_voltage": voltage_raw * 0.01,
-            "battery_current": current_raw * 0.001,
+            "battery_current": current_raw * 0.01,
             "battery_soc": soc,
             "battery_soh": soh,
             "seq_count": seq_count,
+            "emergency_stop": emergency_stop,
+            "handle_offline": handle_offline,
+            "driver1_offline": driver1_offline,
+            "driver2_offline": driver2_offline,
         }

@@ -13,7 +13,7 @@ from tf2_ros import TransformBroadcaster
 
 from chassis_driver.serial_io import ChassisSerial
 from chassis_driver.kinematics import DifferentialDriveKinematics, OdometryIntegrator
-from chassis_msgs.msg import MotorState
+from chassis_msgs.msg import MotorState, ChassisStatus
 
 
 class ChassisDriverNode(Node):
@@ -58,6 +58,7 @@ class ChassisDriverNode(Node):
         self._battery_pub = self.create_publisher(BatteryState, "battery_state", 10)
         self._diagnostics_pub = self.create_publisher(DiagnosticArray, "diagnostics", 10)
         self._motor_state_pub = self.create_publisher(MotorState, "chassis/motor_state", 10)
+        self._chassis_status_pub = self.create_publisher(ChassisStatus, "chassis/status", 10)
 
         self.create_subscription(Twist, "cmd_vel", self._cmd_vel_callback, 10)
         self.create_service(Trigger, "clear_alarm", self._clear_alarm_callback)
@@ -154,6 +155,7 @@ class ChassisDriverNode(Node):
         self._publish_joint_states(state, dt, now)
         self._publish_battery_state(state, now)
         self._publish_motor_state(state)
+        self._publish_chassis_status(state)
         self._publish_diagnostics(connected=True, state=state, lost_packets=lost_packets)
 
     def _publish_odom(self, state: dict, dt: float, stamp):
@@ -216,7 +218,7 @@ class ChassisDriverNode(Node):
         msg.header.stamp = stamp.to_msg()
         msg.voltage = state["battery_voltage"]
         msg.current = state["battery_current"]
-        msg.percentage = state["battery_soc"] / 100.0
+        msg.percentage = state["battery_soc"]
         msg.present = True
         self._battery_pub.publish(msg)
 
@@ -230,40 +232,64 @@ class ChassisDriverNode(Node):
         msg.right_alarm = state["right_alarm"]
         self._motor_state_pub.publish(msg)
 
+    def _publish_chassis_status(self, state: dict):
+        """發布車載安全狀態（緊急開關、手把與驅動器連線狀態）。"""
+        msg = ChassisStatus()
+        msg.emergency_stop = state["emergency_stop"]
+        msg.handle_offline = state["handle_offline"]
+        msg.driver1_offline = state["driver1_offline"]
+        msg.driver2_offline = state["driver2_offline"]
+        self._chassis_status_pub.publish(msg)
+
     def _publish_diagnostics(
-        self, connected: bool, state: dict | None = None, lost_packets: int = 0
-    ):
-        array = DiagnosticArray()
-        array.header.stamp = self.get_clock().now().to_msg()
+            self, connected: bool, state: dict | None = None, lost_packets: int = 0
+        ):
+            array = DiagnosticArray()
+            array.header.stamp = self.get_clock().now().to_msg()
 
-        status = DiagnosticStatus()
-        status.name = "chassis_driver: VCU link"
+            status = DiagnosticStatus()
+            status.name = "chassis_driver: VCU link"
 
-        if not connected:
-            status.level = DiagnosticStatus.ERROR
-            status.message = "No valid packet received from VCU"
-        elif state["left_alarm"] or state["right_alarm"]:
-            status.level = DiagnosticStatus.WARN
-            status.message = "Motor alarm active"
+            if not connected:
+                status.level = DiagnosticStatus.ERROR
+                status.message = "No valid packet received from VCU"
+            elif state["emergency_stop"]:
+                status.level = DiagnosticStatus.ERROR
+                status.message = "Emergency stop is active"
+            elif state["driver1_offline"] or state["driver2_offline"]:
+                status.level = DiagnosticStatus.ERROR
+                status.message = "Motor driver offline"
+                status.values.append(
+                    KeyValue(key="driver1_offline", value=str(state["driver1_offline"]))
+                )
+                status.values.append(
+                    KeyValue(key="driver2_offline", value=str(state["driver2_offline"]))
+                )
+            elif state["handle_offline"]:
+                status.level = DiagnosticStatus.WARN
+                status.message = "Remote handle offline"
+            elif state["left_alarm"] or state["right_alarm"]:
+                status.level = DiagnosticStatus.WARN
+                status.message = "Motor alarm active"
+                status.values.append(
+                    KeyValue(key="left_alarm", value=str(state["left_alarm"]))
+                )
+                status.values.append(
+                    KeyValue(key="right_alarm", value=str(state["right_alarm"]))
+                )
+            elif lost_packets > 0:
+                status.level = DiagnosticStatus.WARN
+                status.message = f"Packet loss detected: {lost_packets} packet(s) this cycle"
+            else:
+                status.level = DiagnosticStatus.OK
+                status.message = "Normal"
+
             status.values.append(
-                KeyValue(key="left_alarm", value=str(state["left_alarm"]))
+                KeyValue(key="total_lost_packets", value=str(self._lost_packet_count))
             )
-            status.values.append(
-                KeyValue(key="right_alarm", value=str(state["right_alarm"]))
-            )
-        elif lost_packets > 0:
-            status.level = DiagnosticStatus.WARN
-            status.message = f"Packet loss detected: {lost_packets} packet(s) this cycle"
-        else:
-            status.level = DiagnosticStatus.OK
-            status.message = "Normal"
 
-        status.values.append(
-            KeyValue(key="total_lost_packets", value=str(self._lost_packet_count))
-        )
-
-        array.status.append(status)
-        self._diagnostics_pub.publish(array)
+            array.status.append(status)
+            self._diagnostics_pub.publish(array)
 
     def destroy_node(self):
         self._serial.stop()

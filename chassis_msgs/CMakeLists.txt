@@ -26,6 +26,7 @@ endif()
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/MotorState.msg"
+  "msg/ChassisStatus.msg"
 )
 
 ament_package()
