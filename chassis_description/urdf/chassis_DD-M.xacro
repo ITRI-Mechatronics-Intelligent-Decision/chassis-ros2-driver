@@ -47,7 +47,7 @@
       <visual>
         <origin xyz="0 0 0" rpy="0 0 0" />
         <geometry>
-          <mesh filename="package://chassis_description/meshes/DD-S/wheel_${name}_link.STL" />
+          <mesh filename="package://chassis_description/meshes/DD-M/wheel_${name}_link.STL" />
         </geometry>
         <material name="wheel_${name}_color">
           <color rgba="${color} 1" />
@@ -56,7 +56,7 @@
       <collision>
         <origin xyz="0 0 0" rpy="0 0 0" />
         <geometry>
-          <mesh filename="package://chassis_description/meshes/DD-S/wheel_${name}_link.STL" />
+          <mesh filename="package://chassis_description/meshes/DD-M/wheel_${name}_link.STL" />
         </geometry>
       </collision>
     </link>
@@ -96,7 +96,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0" />
       <geometry>
-        <mesh filename="package://chassis_description/meshes/DD-S/base_link.STL" />
+        <mesh filename="package://chassis_description/meshes/DD-M/base_link.STL" />
       </geometry>
       <material name="white">
         <color rgba="1 1 1 1" />
@@ -105,7 +105,7 @@
     <collision>
       <origin xyz="0 0 0" rpy="0 0 0" />
       <geometry>
-        <mesh filename="package://chassis_description/meshes/DD-S/base_link.STL" />
+        <mesh filename="package://chassis_description/meshes/DD-M/base_link.STL" />
       </geometry>
     </collision>
   </link>

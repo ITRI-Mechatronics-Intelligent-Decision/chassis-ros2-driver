@@ -1,6 +1,6 @@
 # ITRI 底盤 ROS2 驅動層（chassis-ros2-driver）
 
-適用機型：ITRI DD-S/DD-M/TD-S/TD-M
+適用機型：ITRI DD-M/DD-M/TD-S/TD-M
 文件日期：2026 年 7 月
 
 ## 簡介
@@ -99,8 +99,8 @@ ros2 launch chassis_bringup bringup.launch.py
 
 | 參數 | 說明 | 預設值 |
 |---|---|---|
-| `xacro_file` | 指定 `chassis_description/urdf/` 底下的 xacro 檔名 | `chassis_DD-S.xacro` |
-| `vehicle_param_file` | 指定 `chassis_bringup/config/` 底下的參數檔名 | `vehicle_param_DD-S.yaml` |
+| `xacro_file` | 指定 `chassis_description/urdf/` 底下的 xacro 檔名 | `chassis_DD-M.xacro` |
+| `vehicle_param_file` | 指定 `chassis_bringup/config/` 底下的參數檔名 | `vehicle_param_DD-M.yaml` |
 
 > 依照購買的底盤型號選擇對應的xacro與vehicle_param。
 

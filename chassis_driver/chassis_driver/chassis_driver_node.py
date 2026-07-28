@@ -218,7 +218,7 @@ class ChassisDriverNode(Node):
         msg.header.stamp = stamp.to_msg()
         msg.voltage = state["battery_voltage"]
         msg.current = state["battery_current"]
-        msg.percentage = state["battery_soc"]
+        msg.percentage = float(state["battery_soc"])
         msg.present = True
         self._battery_pub.publish(msg)
 

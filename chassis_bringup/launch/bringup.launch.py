@@ -13,12 +13,12 @@ from launch_ros.substitutions import FindPackageShare
 def generate_launch_description():
     xacro_file_arg = DeclareLaunchArgument(
             "xacro_file",
-            default_value="chassis_DD-S.xacro",
+            default_value="chassis_DD-M.xacro",
             description="Xacro file name under chassis_description/urdf/",
         )
     vehicle_param_file_arg = DeclareLaunchArgument(
         "vehicle_param_file",
-        default_value="vehicle_param_DD-S.yaml",
+        default_value="vehicle_param_DD-M.yaml",
         description="Parameter yaml file name under chassis_bringup/config/",
     )
 
