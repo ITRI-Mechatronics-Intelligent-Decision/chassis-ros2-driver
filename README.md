@@ -1,6 +1,4 @@
 # ITRI 底盤 ROS2 驅動層（chassis-ros2-driver）
-
-適用機型：ITRI DD-M/DD-M/TD-S/TD-M
 文件日期：2026 年 7 月
 
 ## 簡介
@@ -8,6 +6,12 @@
 `chassis_driver` 是底盤與上位應用之間的轉譯層，將底盤控制板（VCU）的 RS485 二進位通訊協定封裝為標準 ROS2 介面。上位開發者不需要處理序列通訊、封包編解碼、運動學換算，只需訂閱／發布標準 topic，即可直接串接 Nav2、SLAM、`robot_localization` 等現成 ROS2 生態系套件。
 
 RS485 序列埠為單一裝置獨佔資源，因此所有與 VCU 的通訊邏輯集中於單一節點 `chassis_driver`，內部再拆分發布為多個語意明確的 topic。
+
+## 支援機型
+| 型號 | 產品圖片 |
+|---|---|
+| DD-M-HH | ![DD-M-HH](docs/images/DD-M-HH.png) |
+
 
 ## 目錄
 
@@ -50,7 +54,16 @@ RS485 序列埠為單一裝置獨佔資源，因此所有與 VCU 的通訊邏輯
 
 ## 4. 快速上手指南
 
-### 4.1 udev 固定裝置命名
+### 4.1 套件部署
+將套件clone至您的colcon工作區並進行編譯：
+(以下說明假設您的colcon工作區位於：~/chassis_ws)
+```bash
+mkdir -p ~/chassis_ws/src
+cd ~/chassis_ws/src
+git clone https://github.com/ITRI-Mechatronics-Intelligent-Decision/chassis-ros2-driver.git
+```
+
+### 4.2 udev 固定裝置命名
 
 USB-to-RS485 轉換器的裝置路徑（`/dev/ttyUSBx`）會因插拔順序而改變，建議透過 udev rule 綁定固定名稱。
 
@@ -73,7 +86,7 @@ sudo udevadm control --reload-rules
 sudo udevadm trigger
 ```
 
-### 4.2 序列埠權限
+### 4.3 序列埠權限
 
 將使用者加入 `dialout` 群組（需登出重新登入才生效）：
 
@@ -81,7 +94,7 @@ sudo udevadm trigger
 sudo usermod -aG dialout $USER
 ```
 
-### 4.3 編譯
+### 4.4 編譯
 
 ```bash
 cd chassis_ws
@@ -89,7 +102,7 @@ colcon build --symlink-install
 source install/setup.bash
 ```
 
-### 4.4 啟動底盤
+### 4.5 啟動底盤
 
 ```bash
 ros2 launch chassis_bringup bringup.launch.py
@@ -104,7 +117,7 @@ ros2 launch chassis_bringup bringup.launch.py
 
 > 依照購買的底盤型號選擇對應的xacro與vehicle_param。
 
-### 4.5 基本操作驗證
+### 4.6 基本操作驗證
 
 鍵盤遙控測試（需另行安裝 `teleop_twist_keyboard`）：
 
