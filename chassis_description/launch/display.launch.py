@@ -1,27 +1,29 @@
+"""Display a chassis model in RViz2 with joint_state_publisher_gui.
+
+The model is selected by name from chassis_description/config/models.yaml:
+
+    ros2 launch chassis_description display.launch.py model:=DD-M-HH
+"""
+
 import os
+import sys
 
-from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.substitutions import Command, FindExecutable, PathJoinSubstitution
+from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.substitutions import Command, FindExecutable, LaunchConfiguration
 from launch_ros.actions import Node
-from launch_ros.substitutions import FindPackageShare
-from launch.substitutions import PathJoinSubstitution
 
-rviz_config = PathJoinSubstitution([
-    FindPackageShare("chassis_description"),
-    "rviz",
-    "static_view.rviz"
-])
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+
+from model_registry import default_model, rviz_path, xacro_path  # noqa: E402
 
 
-def generate_launch_description():
-    xacro_path = PathJoinSubstitution([
-        FindPackageShare('chassis_description'), 'urdf', 'chassis.urdf.xacro'
-    ])
+def _launch_setup(context, *args, **kwargs):
+    model = LaunchConfiguration('model').perform(context)
 
-    robot_description = Command([FindExecutable(name='xacro'), ' ', xacro_path])
+    robot_description = Command([FindExecutable(name='xacro'), ' ', xacro_path(model)])
 
-    return LaunchDescription([
+    return [
         Node(
             package='robot_state_publisher',
             executable='robot_state_publisher',
@@ -37,6 +39,19 @@ def generate_launch_description():
             package='rviz2',
             executable='rviz2',
             name='static_view',
-            arguments=["-d", rviz_config],
+            arguments=['-d', rviz_path(model)],
         ),
+    ]
+
+
+def generate_launch_description():
+    model_arg = DeclareLaunchArgument(
+        'model',
+        default_value=default_model(),
+        description='Chassis model name declared in chassis_description/config/models.yaml',
+    )
+
+    return LaunchDescription([
+        model_arg,
+        OpaqueFunction(function=_launch_setup),
     ])

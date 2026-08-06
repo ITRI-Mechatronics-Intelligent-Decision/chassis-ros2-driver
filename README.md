@@ -11,7 +11,7 @@ RS485 序列埠為單一裝置獨佔資源，因此所有與 VCU 的通訊邏輯
 | 型號 | 產品圖片 |
 |---|---|
 | DD-M-HH | ![DD-M-HH](docs/images/DD-M-HH.png) |
-
+| DD-M-LH | ![DD-M-LH](docs/images/DD-M-HH.png) |
 
 ## 目錄
 
