@@ -10,8 +10,8 @@ RS485 序列埠為單一裝置獨佔資源，因此所有與 VCU 的通訊邏輯
 ## 支援機型
 | 型號 | 產品圖片 |
 |---|---|
+| DD-M | ![DD-M](docs/images/DD-M.png) |
 | DD-M-HH | ![DD-M-HH](docs/images/DD-M-HH.png) |
-| DD-M-LH | ![DD-M-LH](docs/images/DD-M-LH.png) |
 
 ## 目錄
 
@@ -20,7 +20,7 @@ RS485 序列埠為單一裝置獨佔資源，因此所有與 VCU 的通訊邏輯
 3. [硬體平台需求](#3-硬體平台需求)
 4. [快速上手指南](#4-快速上手指南)
 5. [ROS2 對外介面](#5-ros2-對外介面)
-6. [參數說明（vehicle_param.yaml）](#6-參數說明vehicle_paramyaml)
+6. [參數說明](#6-參數說明)
 7. [VCU 序列通訊協定摘要](#7-vcu-序列通訊協定摘要)
 
 ---
@@ -33,12 +33,14 @@ RS485 序列埠為單一裝置獨佔資源，因此所有與 VCU 的通訊邏輯
 | `chassis_driver` | 核心驅動節點，序列通訊、運動學、ROS2 介面 |
 | `chassis_description` | URDF/xacro、mesh，底盤幾何與外觀描述 |
 | `chassis_bringup` | Launch 檔與參數設定，一鍵啟動底盤 |
+| `chassis_system` | 上位機系統層服務，目前提供受保護的關機服務 |
 
 ## 2. 節點分工
 
 | 節點 | 所屬套件 | 職責 |
 |---|---|---|
 | `chassis_driver` | `chassis_driver` | 唯一持有序列埠，負責封包收送、運動學換算、對外發布標準 ROS2 介面 |
+| `system_service` | `chassis_system` | 關閉上位機（不碰序列埠）。關機前確認底盤靜止，並提供倒數與取消機制 |
 | `robot_state_publisher` | `robot_state_publisher`（官方套件） | 讀取 URDF，廣播固定關節 tf（如 `base_footprint → base_link`） |
 
 ## 3. 硬體平台需求
@@ -94,7 +96,31 @@ sudo udevadm trigger
 sudo usermod -aG dialout $USER
 ```
 
-### 4.4 編譯
+### 4.4 關機服務授權（sudoers）
+
+`/system/shutdown` 需要免密碼執行 `shutdown`，否則呼叫時只會在 log 看到
+`shutdown command exited with 1`。授權檔範本位於
+`chassis_system/deploy/chassis-shutdown.sudoers`，`<USER>` 換成實際執行 bringup 的帳號：
+
+```bash
+sudo install -m 0440 -o root -g root \
+  src/chassis-ros2-driver/chassis_system/deploy/chassis-shutdown.sudoers \
+  /etc/sudoers.d/chassis-shutdown
+sudo sed -i "s/<USER>/$USER/" /etc/sudoers.d/chassis-shutdown
+sudo visudo -c        # 必做。sudoers 語法錯誤會讓整台機器無法使用 sudo
+```
+
+授權範圍僅限 `/sbin/shutdown -h now` 這一條完整指令，無法被用來取得其他 root 權限。
+驗證授權是否生效（不會真的關機）：
+
+```bash
+sudo -n -l /sbin/shutdown -h now
+```
+
+> 未安裝此檔時，其餘功能完全不受影響，只有關機服務會在執行階段失敗。
+> 若想在不斷電的情況下先驗證整條流程，把 `system_param.yaml` 的 `dry_run` 設為 `true`。
+
+### 4.5 編譯
 
 ```bash
 cd chassis_ws
@@ -102,7 +128,7 @@ colcon build --symlink-install
 source install/setup.bash
 ```
 
-### 4.5 啟動底盤
+### 4.6 啟動底盤
 
 ```bash
 ros2 launch chassis_bringup bringup.launch.py
@@ -114,10 +140,12 @@ ros2 launch chassis_bringup bringup.launch.py
 |---|---|---|
 | `xacro_file` | 指定 `chassis_description/urdf/` 底下的 xacro 檔名 | `chassis_DD-M.xacro` |
 | `vehicle_param_file` | 指定 `chassis_bringup/config/` 底下的參數檔名 | `vehicle_param_DD-M.yaml` |
+| `system_service` | 是否一併啟動關機服務節點 | `true` |
+| `system_param_file` | 指定關機服務的參數檔名 | `system_param.yaml` |
 
 > 依照購買的底盤型號選擇對應的xacro與vehicle_param。
 
-### 4.6 基本操作驗證
+### 4.7 基本操作驗證
 
 鍵盤遙控測試（需另行安裝 `teleop_twist_keyboard`）：
 
@@ -163,6 +191,36 @@ ros2 service call /clear_alarm std_srvs/srv/Trigger
 | Service | 型別 | 說明 |
 |---|---|---|
 | `/clear_alarm` | `std_srvs/Trigger` | 清除 VCU 馬達 Alarm 狀態（單次觸發）。 |
+| `/system/shutdown` | `chassis_msgs/Shutdown` | 關閉上位機。需帶確認碼，倒數期間可取消。 |
+| `/system/shutdown_cancel` | `std_srvs/Trigger` | 取消尚在倒數中的關機排程。 |
+
+倒數狀態另發布於 `/system/shutdown_pending`（`std_msgs/Bool`，latched），供上層 UI 顯示。
+
+#### 關機服務用法
+
+```bash
+# 5 秒後關機（delay_sec 給負值表示採用 default_delay_sec）
+ros2 service call /system/shutdown chassis_msgs/srv/Shutdown \
+  "{confirm: 'SHUTDOWN', delay_sec: -1.0, reason: '收工', force: false}"
+
+# 反悔：倒數結束前都可取消
+ros2 service call /system/shutdown_cancel std_srvs/srv/Trigger "{}"
+```
+
+服務在下列情況會**拒絕**關機並回傳 `success: false`：
+
+| 情況 | 回應訊息 |
+|---|---|
+| `confirm` 不等於 `confirm_code` | `confirm code mismatch: ...` |
+| `delay_sec` 超過 `max_delay_sec` | `delay_sec ... exceeds max_delay_sec ...` |
+| 底盤仍在移動 | `shutdown refused: chassis is still moving ...` |
+| 收不到 `/chassis/motor_state`（狀態未知） | `shutdown refused: no message on ... / ... is stale ...` |
+| 已有排程中的關機 | `a shutdown is already scheduled ...` |
+
+`force: true` 可略過「底盤靜止」檢查，其餘檢查（確認碼、倒數上限）仍然生效。
+
+倒數期間本節點會持續送出零速 `/cmd_vel`，確保上位機斷電時底盤不會保留最後一筆速度命令；
+若倒數結束時底盤仍未靜止，會再等 `stop_settle_timeout` 秒，逾時則**放棄關機**並記錄 ERROR。
 
 ### 5.4 座標系（TF）
 
@@ -170,11 +228,13 @@ tf 樹結構：
 
 ![TF樹](docs/images/tf_tree.png)
 
-`base_footprint` 為投影於地面（z=0）的參考點，供 Nav2 costmap 與定位套件使用；`base_footprint` 與 `base_link` 之間為固定關節，由 `robot_state_publisher` 依 URDF 自動廣播，不需額外程式碼處理。
+`base_footprint` 為投影於地面（z=0）的參考點，供 Nav2 costmap 與定位套件使用；`base_link`位於輪子軸中心平面與車體中心位置；`base_footprint` 與 `base_link` 之間為固定關節，由 `robot_state_publisher` 依 URDF 自動廣播，不需額外程式碼處理，若後續另外安裝額外模組需對接底盤tf tree時，請參照附贈的底盤技術文件提供的機構尺寸。
 
 若需以 IMU 做感測融合（建議搭配 `robot_localization` 套件），請將 `publish_tf` 設為 `false`，改由 `robot_localization` 的 EKF 節點發布 `odom → base_footprint`，避免兩個節點同時廣播同一條 tf 造成衝突。
 
-## 6. 參數說明（vehicle_param.yaml）
+## 6. 參數說明
+
+### 6.1 底盤參數（vehicle_param.yaml）
 
 所有底盤參數集中於 `chassis_bringup/config/vehicle_param.yaml`，換裝不同機型時僅需替換此設定檔，不需修改程式碼。
 
@@ -195,6 +255,23 @@ tf 樹結構：
 | `cmd_vel_timeout` | float | `0.5` | `/cmd_vel` 逾時秒數，逾時強制送出零速 |
 
 > `cmd_left_direction`／`cmd_right_direction` 與 `fb_left_direction`／`fb_right_direction` 為獨立參數：前者修正「送出指令」方向，後者修正「讀取回報轉速」方向。兩者物理上可能不同，實際數值需以實測為準，不可假設對稱。
+
+### 6.2 關機服務參數（system_param.yaml）
+
+位於 `chassis_bringup/config/system_param.yaml`，對應 `chassis_system` 的 `system_service` 節點。
+
+| 參數 | 型別 | 預設值 | 說明 |
+|---|---|---|---|
+| `confirm_code` | string | `SHUTDOWN` | 關機確認碼。請求的 `confirm` 需與此相同；設為空字串表示停用確認機制 |
+| `default_delay_sec` | float | `5.0` | 請求未指定（`delay_sec` 為負）時採用的倒數秒數 |
+| `max_delay_sec` | float | `300.0` | 允許的最長倒數秒數 |
+| `shutdown_command` | string[] | `["sudo", "-n", "/sbin/shutdown", "-h", "now"]` | 實際執行的關機指令，需與 sudoers 授權一致 |
+| `require_stationary` | bool | `true` | 是否要求底盤靜止才允許關機 |
+| `stationary_rpm_threshold` | int | `0` | 視為靜止的馬達轉速上限（rpm） |
+| `motor_state_timeout` | float | `1.0` | `/chassis/motor_state` 逾時秒數，逾時即視為狀態未知 |
+| `stop_settle_timeout` | float | `3.0` | 倒數結束後等待底盤停穩的最長秒數，逾時放棄關機 |
+| `tick_period` | float | `0.1` | 倒數檢查與零速送出的週期（秒） |
+| `dry_run` | bool | `false` | 設為 `true` 時只記錄不真的關機，供驗證流程使用 |
 
 ## 7. VCU 序列通訊協定摘要
 

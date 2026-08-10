@@ -1,0 +1,18 @@
+# /etc/sudoers.d/chassis-shutdown
+#
+# 讓 chassis_system 的 system_service_node 能免密碼關閉上位機。
+# 授權範圍刻意收斂到「這一條完整指令」：連 `-r`（重開機）都不在授權內，
+# 因此這份規則無法被用來取得其他 root 權限。
+#
+# 安裝（<USER> 換成實際執行 ROS2 bringup 的帳號）：
+#
+#   sudo install -m 0440 -o root -g root \
+#     chassis-shutdown.sudoers /etc/sudoers.d/chassis-shutdown
+#   sudo sed -i "s/<USER>/$USER/" /etc/sudoers.d/chassis-shutdown
+#   sudo visudo -c        # 必做。語法錯誤會讓整台機器無法使用 sudo
+#
+# 驗證（不會真的關機，只確認授權存在）：
+#
+#   sudo -n -l /sbin/shutdown -h now
+
+<USER> ALL=(root) NOPASSWD: /sbin/shutdown -h now

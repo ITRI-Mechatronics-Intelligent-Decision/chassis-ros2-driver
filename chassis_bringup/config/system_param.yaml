@@ -1,0 +1,12 @@
+system_service:
+  ros__parameters:
+    confirm_code: SHUTDOWN
+    default_delay_sec: 5.0
+    max_delay_sec: 300.0
+    shutdown_command: ["sudo", "-n", "/sbin/shutdown", "-h", "now"]
+    require_stationary: true
+    stationary_rpm_threshold: 0
+    motor_state_timeout: 1.0
+    stop_settle_timeout: 3.0
+    tick_period: 0.1
+    dry_run: false

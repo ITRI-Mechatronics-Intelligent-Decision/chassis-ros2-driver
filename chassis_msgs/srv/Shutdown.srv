@@ -1,0 +1,11 @@
+# 關閉上位機（onboard computer）。
+# 這是不可逆操作，因此請求端必須帶上確認碼，避免誤觸即斷電。
+
+string confirm          # 必須等於節點參數 confirm_code，否則直接拒絕
+float32 delay_sec       # 倒數秒數；負值表示採用節點參數 default_delay_sec
+string reason           # 關機原因，寫入 log 供事後追查
+bool force              # 略過底盤靜止檢查（僅限緊急情況）
+---
+bool success
+string message
+builtin_interfaces/Time scheduled_time   # 預定執行 poweroff 的時刻；失敗時為 0

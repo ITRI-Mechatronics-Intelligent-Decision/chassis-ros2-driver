@@ -26,6 +26,8 @@ def _launch_setup(context, *args, **kwargs):
     model = LaunchConfiguration('model').perform(context)
     xacro_file = LaunchConfiguration('xacro_file').perform(context)
     vehicle_param_file = LaunchConfiguration('vehicle_param_file').perform(context)
+    system_service = LaunchConfiguration('system_service').perform(context)
+    system_param_file = LaunchConfiguration('system_param_file').perform(context)
 
     entry = model_entry(model)
     xacro_file = xacro_file or entry['xacro']
@@ -44,7 +46,7 @@ def _launch_setup(context, *args, **kwargs):
 
     robot_description = Command(['xacro ', xacro_path])
 
-    return [
+    nodes = [
         Node(
             package='robot_state_publisher',
             executable='robot_state_publisher',
@@ -58,6 +60,23 @@ def _launch_setup(context, *args, **kwargs):
             parameters=[vehicle_param_path],
         ),
     ]
+
+    if system_service.lower() in ('true', '1'):
+        system_param_path = os.path.join(
+            get_package_share_directory('chassis_bringup'), 'config', system_param_file
+        )
+        if not os.path.exists(system_param_path):
+            raise RuntimeError(f'Missing system parameter file: {system_param_path}')
+        nodes.append(
+            Node(
+                package='chassis_system',
+                executable='system_service_node',
+                output='screen',
+                parameters=[system_param_path],
+            )
+        )
+
+    return nodes
 
 
 def generate_launch_description():
@@ -77,9 +96,22 @@ def generate_launch_description():
         description='Override the parameter yaml file name under chassis_bringup/config/',
     )
 
+    system_service_arg = DeclareLaunchArgument(
+        'system_service',
+        default_value='true',
+        description='Start chassis_system/system_service_node (onboard computer shutdown service)',
+    )
+    system_param_file_arg = DeclareLaunchArgument(
+        'system_param_file',
+        default_value='system_param.yaml',
+        description='Parameter yaml for system_service_node, under chassis_bringup/config/',
+    )
+
     return LaunchDescription([
         model_arg,
         xacro_file_arg,
         vehicle_param_file_arg,
+        system_service_arg,
+        system_param_file_arg,
         OpaqueFunction(function=_launch_setup),
     ])
