@@ -68,17 +68,17 @@ class ChassisDriverNode(Node):
         self.create_timer(params["send_interval"], self._control_loop)
 
     def _declare_parameters(self):
-        self.declare_parameter("port", "/dev/ttyUSB0")
+        self.declare_parameter("port", "/dev/ttyUSB_chassis")
         self.declare_parameter("baudrate", 19200)
         self.declare_parameter("serial_timeout", 0.5)
         self.declare_parameter("send_interval", 0.1)
-        self.declare_parameter("gear_ratio", 30.0)
+        self.declare_parameter("gear_ratio", 50.0)
         self.declare_parameter("wheel_radius", 0.2032)
         self.declare_parameter("wheel_separation", 0.6221)
         self.declare_parameter("cmd_left_direction", 1)
         self.declare_parameter("cmd_right_direction", 1)
-        self.declare_parameter("fb_left_direction", -1)
-        self.declare_parameter("fb_right_direction", -1)
+        self.declare_parameter("fb_left_direction", 1)
+        self.declare_parameter("fb_right_direction", 1)
         self.declare_parameter("publish_tf", True)
         self.declare_parameter("cmd_vel_timeout", 0.5)
 
