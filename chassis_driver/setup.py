@@ -21,6 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             'chassis_driver_node = chassis_driver.chassis_driver_node:main',
+            'map_odom_bridge = chassis_driver.map_odom_bridge:main',
         ],
     },
 )
