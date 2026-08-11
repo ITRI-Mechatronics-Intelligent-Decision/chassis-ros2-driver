@@ -6,6 +6,14 @@ The chassis model is selected by name from chassis_description/config/models.yam
 
 xacro_file and vehicle_param_file stay available to override either half of the
 registry entry, e.g. to test a work-in-progress parameter set.
+
+localization_mode picks how the chassis pose reaches the TF tree:
+
+    standalone         chassis broadcasts odom -> base_frame itself (default)
+    external_takeover  chassis publishes /odom only, an external localiser owns
+                       odom -> base_frame
+    rep105_bridge      chassis broadcasts odom -> base_frame and map_odom_bridge
+                       turns an external absolute pose into map -> odom
 """
 
 import os
@@ -21,6 +29,13 @@ sys.path.insert(0, os.path.join(get_package_share_directory('chassis_description
 
 from model_registry import default_model, model_entry  # noqa: E402
 
+# mode -> (chassis broadcasts odom -> base_frame, start map_odom_bridge)
+LOCALIZATION_MODES = {
+    'standalone': (True, False),
+    'external_takeover': (False, False),
+    'rep105_bridge': (True, True),
+}
+
 
 def _launch_setup(context, *args, **kwargs):
     model = LaunchConfiguration('model').perform(context)
@@ -28,6 +43,15 @@ def _launch_setup(context, *args, **kwargs):
     vehicle_param_file = LaunchConfiguration('vehicle_param_file').perform(context)
     system_service = LaunchConfiguration('system_service').perform(context)
     system_param_file = LaunchConfiguration('system_param_file').perform(context)
+    localization_mode = LaunchConfiguration('localization_mode').perform(context)
+    external_odom_topic = LaunchConfiguration('external_odom_topic').perform(context)
+
+    if localization_mode not in LOCALIZATION_MODES:
+        raise RuntimeError(
+            f"Unknown localization_mode '{localization_mode}': "
+            f'expected one of {sorted(LOCALIZATION_MODES)}'
+        )
+    publish_tf, start_bridge = LOCALIZATION_MODES[localization_mode]
 
     entry = model_entry(model)
     xacro_file = xacro_file or entry['xacro']
@@ -57,9 +81,20 @@ def _launch_setup(context, *args, **kwargs):
             package='chassis_driver',
             executable='chassis_driver_node',
             output='screen',
-            parameters=[vehicle_param_path],
+            parameters=[vehicle_param_path, {'publish_tf': publish_tf}],
         ),
     ]
+
+    if start_bridge:
+        nodes.append(
+            Node(
+                package='chassis_driver',
+                executable='map_odom_bridge',
+                output='screen',
+                parameters=[vehicle_param_path],
+                remappings=[('external_odom', external_odom_topic)],
+            )
+        )
 
     if system_service.lower() in ('true', '1'):
         system_param_path = os.path.join(
@@ -107,11 +142,27 @@ def generate_launch_description():
         description='Parameter yaml for system_service_node, under chassis_bringup/config/',
     )
 
+    localization_mode_arg = DeclareLaunchArgument(
+        'localization_mode',
+        default_value='standalone',
+        description=(
+            'How the chassis pose reaches the TF tree: '
+            f'{" | ".join(sorted(LOCALIZATION_MODES))}'
+        ),
+    )
+    external_odom_topic_arg = DeclareLaunchArgument(
+        'external_odom_topic',
+        default_value='external_odom',
+        description='nav_msgs/Odometry topic map_odom_bridge subscribes to',
+    )
+
     return LaunchDescription([
         model_arg,
         xacro_file_arg,
         vehicle_param_file_arg,
         system_service_arg,
         system_param_file_arg,
+        localization_mode_arg,
+        external_odom_topic_arg,
         OpaqueFunction(function=_launch_setup),
     ])
