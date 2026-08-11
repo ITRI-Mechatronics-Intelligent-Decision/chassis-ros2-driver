@@ -79,21 +79,21 @@ class ChassisDriverNode(Node):
         self.create_timer(params["send_interval"], self._control_loop)
 
     def _declare_parameters(self):
-        self.declare_parameter("port", "/dev/ttyUSB_chassis")
-        self.declare_parameter("baudrate", 19200)
-        self.declare_parameter("serial_timeout", 0.5)
-        self.declare_parameter("send_interval", 0.1)
-        self.declare_parameter("gear_ratio", 50.0)
-        self.declare_parameter("wheel_radius", 0.2032)
-        self.declare_parameter("wheel_separation", 0.6221)
-        self.declare_parameter("cmd_left_direction", 1)
-        self.declare_parameter("cmd_right_direction", 1)
-        self.declare_parameter("fb_left_direction", 1)
-        self.declare_parameter("fb_right_direction", 1)
+        self.declare_parameter("port", "/dev/ttyUSB_chassis", _startup_only())
+        self.declare_parameter("baudrate", 19200, _startup_only())
+        self.declare_parameter("serial_timeout", 0.5, _startup_only())
+        self.declare_parameter("send_interval", 0.1, _startup_only())
+        self.declare_parameter("gear_ratio", 50.0, _startup_only())
+        self.declare_parameter("wheel_radius", 0.2032, _startup_only())
+        self.declare_parameter("wheel_separation", 0.6221, _startup_only())
+        self.declare_parameter("cmd_left_direction", 1, _startup_only())
+        self.declare_parameter("cmd_right_direction", 1, _startup_only())
+        self.declare_parameter("fb_left_direction", 1, _startup_only())
+        self.declare_parameter("fb_right_direction", 1, _startup_only())
         self.declare_parameter("publish_tf", True, _startup_only())
         self.declare_parameter("odom_frame", "odom", _startup_only())
         self.declare_parameter("base_frame", "base_footprint", _startup_only())
-        self.declare_parameter("cmd_vel_timeout", 0.5)
+        self.declare_parameter("cmd_vel_timeout", 0.5, _startup_only())
 
     def _read_parameters(self) -> dict:
         return {
