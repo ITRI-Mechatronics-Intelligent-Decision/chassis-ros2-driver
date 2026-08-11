@@ -3,7 +3,7 @@
 import math
 
 import rclpy
-from rcl_interfaces.msg import ParameterDescriptor
+from rcl_interfaces.msg import ParameterDescriptor, SetParametersResult
 from rclpy.node import Node
 from geometry_msgs.msg import Twist, TransformStamped
 from nav_msgs.msg import Odometry
@@ -62,7 +62,8 @@ class ChassisDriverNode(Node):
         self._wheel_angle_right = 0.0
         self._lost_packet_count = 0
 
-        self._tf_broadcaster = TransformBroadcaster(self) if self._publish_tf else None
+        # 無條件建立：publish_tf 可於執行期切換，broadcaster 必須隨時可用
+        self._tf_broadcaster = TransformBroadcaster(self)
 
         self._odom_pub = self.create_publisher(Odometry, "odom", 10)
         self._joint_state_pub = self.create_publisher(JointState, "joint_states", 10)
@@ -75,6 +76,8 @@ class ChassisDriverNode(Node):
         self.create_service(Trigger, "clear_alarm", self._clear_alarm_callback)
 
         self._clear_alarm_pending = False
+
+        self.add_on_set_parameters_callback(self._on_set_parameters)
 
         self.create_timer(params["send_interval"], self._control_loop)
 
@@ -90,10 +93,12 @@ class ChassisDriverNode(Node):
         self.declare_parameter("cmd_right_direction", 1, _startup_only())
         self.declare_parameter("fb_left_direction", 1, _startup_only())
         self.declare_parameter("fb_right_direction", 1, _startup_only())
-        self.declare_parameter("publish_tf", True, _startup_only())
+        # publish_tf 與 cmd_vel_timeout 刻意保持可寫：底盤出貨後由買方的上位機
+        # 透過 DDS 遠端調整，不預期有人登入底盤主機（見 README 5.4）。
+        self.declare_parameter("publish_tf", True)
         self.declare_parameter("odom_frame", "odom", _startup_only())
         self.declare_parameter("base_frame", "base_footprint", _startup_only())
-        self.declare_parameter("cmd_vel_timeout", 0.5, _startup_only())
+        self.declare_parameter("cmd_vel_timeout", 0.5)
 
     def _read_parameters(self) -> dict:
         return {
@@ -113,6 +118,24 @@ class ChassisDriverNode(Node):
             "base_frame": self.get_parameter("base_frame").value,
             "cmd_vel_timeout": self.get_parameter("cmd_vel_timeout").value,
         }
+
+    def _on_set_parameters(self, params) -> SetParametersResult:
+        """Apply the runtime-tunable parameters, rejecting unusable values."""
+        for param in params:
+            if param.name == "cmd_vel_timeout" and param.value <= 0.0:
+                return SetParametersResult(
+                    successful=False,
+                    reason="cmd_vel_timeout must be > 0, "
+                           "otherwise the watchdog zeroes the motors every cycle",
+                )
+
+        for param in params:
+            if param.name == "publish_tf":
+                self._publish_tf = param.value
+            elif param.name == "cmd_vel_timeout":
+                self._cmd_vel_timeout = param.value
+
+        return SetParametersResult(successful=True)
 
     def _cmd_vel_callback(self, msg: Twist):
         self._last_cmd_vel_time = self.get_clock().now()
