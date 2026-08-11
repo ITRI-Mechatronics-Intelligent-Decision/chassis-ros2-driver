@@ -3,6 +3,7 @@
 import math
 
 import rclpy
+from rcl_interfaces.msg import ParameterDescriptor
 from rclpy.node import Node
 from geometry_msgs.msg import Twist, TransformStamped
 from nav_msgs.msg import Odometry
@@ -14,6 +15,14 @@ from tf2_ros import TransformBroadcaster
 from chassis_driver.serial_io import ChassisSerial
 from chassis_driver.kinematics import DifferentialDriveKinematics, OdometryIntegrator
 from chassis_msgs.msg import MotorState, ChassisStatus
+
+
+def _startup_only() -> ParameterDescriptor:
+    """Return a descriptor for a parameter that is only read at construction time."""
+    return ParameterDescriptor(
+        read_only=True,
+        description="Read once at startup: set it through YAML or launch, not ros2 param set.",
+    )
 
 
 class ChassisDriverNode(Node):
@@ -34,6 +43,8 @@ class ChassisDriverNode(Node):
         )
         self._odom_integrator = OdometryIntegrator()
         self._publish_tf = params["publish_tf"]
+        self._odom_frame = params["odom_frame"]
+        self._base_frame = params["base_frame"]
         self._cmd_vel_timeout = params["cmd_vel_timeout"]
 
         self._serial = ChassisSerial(
@@ -51,7 +62,7 @@ class ChassisDriverNode(Node):
         self._wheel_angle_right = 0.0
         self._lost_packet_count = 0
 
-        self._tf_broadcaster = TransformBroadcaster(self)
+        self._tf_broadcaster = TransformBroadcaster(self) if self._publish_tf else None
 
         self._odom_pub = self.create_publisher(Odometry, "odom", 10)
         self._joint_state_pub = self.create_publisher(JointState, "joint_states", 10)
@@ -68,19 +79,21 @@ class ChassisDriverNode(Node):
         self.create_timer(params["send_interval"], self._control_loop)
 
     def _declare_parameters(self):
-        self.declare_parameter("port", "/dev/ttyUSB0")
-        self.declare_parameter("baudrate", 19200)
-        self.declare_parameter("serial_timeout", 0.5)
-        self.declare_parameter("send_interval", 0.1)
-        self.declare_parameter("gear_ratio", 30.0)
-        self.declare_parameter("wheel_radius", 0.2032)
-        self.declare_parameter("wheel_separation", 0.6221)
-        self.declare_parameter("cmd_left_direction", 1)
-        self.declare_parameter("cmd_right_direction", 1)
-        self.declare_parameter("fb_left_direction", -1)
-        self.declare_parameter("fb_right_direction", -1)
-        self.declare_parameter("publish_tf", True)
-        self.declare_parameter("cmd_vel_timeout", 0.5)
+        self.declare_parameter("port", "/dev/ttyUSB_chassis", _startup_only())
+        self.declare_parameter("baudrate", 19200, _startup_only())
+        self.declare_parameter("serial_timeout", 0.5, _startup_only())
+        self.declare_parameter("send_interval", 0.1, _startup_only())
+        self.declare_parameter("gear_ratio", 50.0, _startup_only())
+        self.declare_parameter("wheel_radius", 0.2032, _startup_only())
+        self.declare_parameter("wheel_separation", 0.6221, _startup_only())
+        self.declare_parameter("cmd_left_direction", 1, _startup_only())
+        self.declare_parameter("cmd_right_direction", 1, _startup_only())
+        self.declare_parameter("fb_left_direction", 1, _startup_only())
+        self.declare_parameter("fb_right_direction", 1, _startup_only())
+        self.declare_parameter("publish_tf", True, _startup_only())
+        self.declare_parameter("odom_frame", "odom", _startup_only())
+        self.declare_parameter("base_frame", "base_footprint", _startup_only())
+        self.declare_parameter("cmd_vel_timeout", 0.5, _startup_only())
 
     def _read_parameters(self) -> dict:
         return {
@@ -96,6 +109,8 @@ class ChassisDriverNode(Node):
             "fb_left_direction": self.get_parameter("fb_left_direction").value,
             "fb_right_direction": self.get_parameter("fb_right_direction").value,
             "publish_tf": self.get_parameter("publish_tf").value,
+            "odom_frame": self.get_parameter("odom_frame").value,
+            "base_frame": self.get_parameter("base_frame").value,
             "cmd_vel_timeout": self.get_parameter("cmd_vel_timeout").value,
         }
 
@@ -167,8 +182,8 @@ class ChassisDriverNode(Node):
 
         odom = Odometry()
         odom.header.stamp = stamp.to_msg()
-        odom.header.frame_id = "odom"
-        odom.child_frame_id = "base_footprint"
+        odom.header.frame_id = self._odom_frame
+        odom.child_frame_id = self._base_frame
         odom.pose.pose.position.x = self._odom_integrator.x
         odom.pose.pose.position.y = self._odom_integrator.y
         odom.pose.pose.orientation.z = math.sin(self._odom_integrator.theta / 2.0)
@@ -180,8 +195,8 @@ class ChassisDriverNode(Node):
         if self._publish_tf:
             tf = TransformStamped()
             tf.header.stamp = stamp.to_msg()
-            tf.header.frame_id = "odom"
-            tf.child_frame_id = "base_footprint"
+            tf.header.frame_id = self._odom_frame
+            tf.child_frame_id = self._base_frame
             tf.transform.translation.x = self._odom_integrator.x
             tf.transform.translation.y = self._odom_integrator.y
             tf.transform.rotation.z = odom.pose.pose.orientation.z
