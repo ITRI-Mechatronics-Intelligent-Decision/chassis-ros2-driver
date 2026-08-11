@@ -9,6 +9,7 @@ import rclpy
 from rclpy.duration import Duration
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
+from rcl_interfaces.msg import ParameterDescriptor
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Bool
 from std_srvs.srv import Trigger
@@ -23,6 +24,14 @@ from chassis_system.power import (
 )
 from chassis_msgs.msg import MotorState
 from chassis_msgs.srv import Shutdown
+
+
+def _startup_only() -> ParameterDescriptor:
+    """Return a descriptor for a parameter that is only read at construction time."""
+    return ParameterDescriptor(
+        read_only=True,
+        description='Read once at startup: set it through YAML or launch, not ros2 param set.',
+    )
 
 
 class SystemServiceNode(Node):
@@ -74,16 +83,16 @@ class SystemServiceNode(Node):
             self.get_logger().warn('dry_run is enabled: shutdown requests will NOT power off')
 
     def _declare_parameters(self):
-        self.declare_parameter('confirm_code', 'SHUTDOWN')
-        self.declare_parameter('default_delay_sec', 5.0)
-        self.declare_parameter('max_delay_sec', 300.0)
-        self.declare_parameter('shutdown_command', DEFAULT_SHUTDOWN_COMMAND)
-        self.declare_parameter('require_stationary', True)
-        self.declare_parameter('stationary_rpm_threshold', 0)
-        self.declare_parameter('motor_state_timeout', 1.0)
-        self.declare_parameter('stop_settle_timeout', 3.0)
-        self.declare_parameter('tick_period', 0.1)
-        self.declare_parameter('dry_run', False)
+        self.declare_parameter('confirm_code', 'SHUTDOWN', _startup_only())
+        self.declare_parameter('default_delay_sec', 5.0, _startup_only())
+        self.declare_parameter('max_delay_sec', 300.0, _startup_only())
+        self.declare_parameter('shutdown_command', DEFAULT_SHUTDOWN_COMMAND, _startup_only())
+        self.declare_parameter('require_stationary', True, _startup_only())
+        self.declare_parameter('stationary_rpm_threshold', 0, _startup_only())
+        self.declare_parameter('motor_state_timeout', 1.0, _startup_only())
+        self.declare_parameter('stop_settle_timeout', 3.0, _startup_only())
+        self.declare_parameter('tick_period', 0.1, _startup_only())
+        self.declare_parameter('dry_run', False, _startup_only())
 
     def _read_parameters(self) -> dict:
         return {
