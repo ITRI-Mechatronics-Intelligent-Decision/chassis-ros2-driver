@@ -187,7 +187,7 @@ ros2 service call /clear_alarm std_srvs/srv/Trigger
 | `/battery_state` | `sensor_msgs/BatteryState` | 電壓、電流、SoC。 |
 | `/diagnostics` | `diagnostic_msgs/DiagnosticArray` | VCU 連線狀態、馬達 Alarm、封包遺漏偵測。 |
 | `/chassis/motor_state` | `chassis_msgs/MotorState` | 原始馬達轉速、霍爾值、Alarm 狀態，未套用方向修正，供進階除錯使用。 |
-| `/chassis/chassis_state` | `chassis_msgs/ChassisState` | 緊急開關、遙控器連線與兩顆驅動器的連接狀態 |
+| `/chassis/status` | `chassis_msgs/ChassisStatus` | 緊急開關、遙控器連線與兩顆驅動器的連接狀態。 |
 
 ### 5.3 服務
 
