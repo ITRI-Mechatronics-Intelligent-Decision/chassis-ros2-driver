@@ -41,6 +41,7 @@ RS485 序列埠為單一裝置獨佔資源，因此所有與 VCU 的通訊邏輯
 |---|---|---|
 | `chassis_driver` | `chassis_driver` | 唯一持有序列埠，負責封包收送、運動學換算、對外發布標準 ROS2 介面 |
 | `system_service` | `chassis_system` | 關閉上位機（不碰序列埠）。關機前確認底盤靜止，並提供倒數與取消機制 |
+| `map_odom_bridge` | `chassis_driver` | 選用。將外部定位系統輸出的絕對位姿換算為 `map → odom`，使 tf 樹維持單一根節點（見 5.4） |
 | `robot_state_publisher` | `robot_state_publisher`（官方套件） | 讀取 URDF，廣播固定關節 tf（如 `base_footprint → base_link`） |
 
 ## 3. 硬體平台需求
@@ -142,6 +143,8 @@ ros2 launch chassis_bringup bringup.launch.py
 | `vehicle_param_file` | 指定 `chassis_bringup/config/` 底下的參數檔名 | `vehicle_param_DD-M.yaml` |
 | `system_service` | 是否一併啟動關機服務節點 | `true` |
 | `system_param_file` | 指定關機服務的參數檔名 | `system_param.yaml` |
+| `localization_mode` | 車體位姿由誰負責，可填 `standalone`／`external_takeover`／`rep105_bridge`（見 5.4） | `standalone` |
+| `external_odom_topic` | `rep105_bridge` 模式下，`map_odom_bridge` 訂閱的外部里程計 topic | `external_odom` |
 
 > 依照購買的底盤型號選擇對應的xacro與vehicle_param。
 
@@ -230,7 +233,59 @@ tf 樹結構：
 
 `base_footprint` 為投影於地面（z=0）的參考點，供 Nav2 costmap 與定位套件使用；`base_link`位於輪子軸中心平面與車體中心位置；`base_footprint` 與 `base_link` 之間為固定關節，由 `robot_state_publisher` 依 URDF 自動廣播，不需額外程式碼處理，若後續另外安裝額外模組需對接底盤tf tree時，請參照附贈的底盤技術文件提供的機構尺寸。
 
-若需以 IMU 做感測融合（建議搭配 `robot_localization` 套件），請將 `publish_tf` 設為 `false`，改由 `robot_localization` 的 EKF 節點發布 `odom → base_footprint`，避免兩個節點同時廣播同一條 tf 造成衝突。
+#### 與外部定位系統整合
+
+若上位應用自行執行定位或建圖（IMU 融合、LIO、VIO 等），`odom → base_footprint` 這條 tf 必須只有一個發布者，否則兩邊會互相打架。透過 `localization_mode` 選擇由誰負責，不需要修改任何設定檔：
+
+| 模式 | 底盤是否發 `odom → base_footprint` | 啟動 `map_odom_bridge` | 適用情境 |
+|---|---|---|---|
+| `standalone`（預設） | 是 | 否 | 只用底盤自身的輪速里程計 |
+| `external_takeover` | 否 | 否 | 外部套件會自行發布 `odom → base_footprint`，例如 `robot_localization` 的 EKF |
+| `rep105_bridge` | 是 | 是 | 外部系統輸出的是**地圖座標下的絕對位姿**，例如 LIO／VIO |
+
+**情境一：以 IMU 做感測融合（`robot_localization`）**
+
+EKF 節點會自行發布 `odom → base_footprint`，因此底盤必須讓出這條 tf：
+
+```bash
+ros2 launch chassis_bringup bringup.launch.py localization_mode:=external_takeover
+```
+
+EKF 側請將 `base_link_frame` 設為 `base_footprint`，與底盤的 `base_frame` 一致。
+
+> 此模式下底盤只發布 `/odom` topic，**不再廣播任何 tf**。若外部套件沒有接手發布 `odom → base_footprint`，tf 樹會從 `base_footprint` 斷開，RViz 中車體模型將無法定位、Nav2 亦無法運作。
+
+**情境二：外部系統輸出絕對位姿（LIO／VIO）**
+
+這類系統通常直接廣播 `map → 感測器` 的位姿。若讓它自行廣播，會與底盤的 tf 樹形成兩棵互不相連的樹。此時應改用 `rep105_bridge`：底盤照常發 `odom → base_footprint`，由 `map_odom_bridge` 補上 `map → odom` 的修正量，使 tf 樹維持單一根節點（符合 REP-105）：
+
+```
+map → odom → base_footprint → base_link → { wheel_*, 買方感測器 }
+```
+
+```bash
+ros2 launch chassis_bringup bringup.launch.py \
+  localization_mode:=rep105_bridge \
+  external_odom_topic:=/lio/odometry
+```
+
+使用前需完成兩件事：
+
+1. 在自己的 URDF 中，將感測器 link 以固定關節掛在 `base_link` 底下（機構尺寸請參照附贈的底盤技術文件）。
+2. 將 `vehicle_param_*.yaml` 中 `map_odom_bridge` 區塊的 `sensor_frame` 改為該 link 名稱（預設 `box_link`）。
+
+`map_odom_bridge` 可用參數：
+
+| 參數 | 型別 | 預設值 | 說明 |
+|---|---|---|---|
+| `map_frame` | string | `map` | 輸出 tf 的父座標系 |
+| `odom_frame` | string | `odom` | 輸出 tf 的子座標系，需與底盤的 `odom_frame` 一致 |
+| `base_frame` | string | `base_footprint` | 車體座標系，需與底盤的 `base_frame` 一致 |
+| `sensor_frame` | string | `box_link` | 外部系統回報位姿所對應的感測器 link |
+
+> `base_frame → sensor_frame` 為靜態外參，節點啟動後查詢一次即快取。若查詢不到（例如 URDF 尚未掛上該 link），節點不會中止，而是每 5 秒輸出一次警告並等待。
+>
+> 輸出 tf 沿用輸入訊息的時戳。若外部系統的時戳比底盤最新的里程計 tf 還新，該筆會被略過並輸出警告——這屬正常現象，`map → odom` 為緩慢變化的修正量，不需與外部系統同頻率。
 
 ## 6. 參數說明
 
@@ -251,10 +306,14 @@ tf 樹結構：
 | `cmd_right_direction` | int（1 或 -1） | `1` | 送出指令時，右馬達方向修正 |
 | `fb_left_direction` | int（1 或 -1） | `1` | 讀取回報時，左馬達方向修正 |
 | `fb_right_direction` | int（1 或 -1） | `1` | 讀取回報時，右馬達方向修正 |
-| `publish_tf` | bool | `true` | 是否廣播 `odom → base_footprint` tf |
+| `publish_tf` | bool | `true` | 是否廣播 `odom → base_footprint` tf。一般透過 `localization_mode` 間接設定（見 5.4），不需直接修改 |
+| `odom_frame` | string | `odom` | 里程計座標系名稱，同時套用於 `/odom` 訊息與 tf |
+| `base_frame` | string | `base_footprint` | 車體座標系名稱，同時套用於 `/odom` 訊息與 tf |
 | `cmd_vel_timeout` | float | `0.5` | `/cmd_vel` 逾時秒數，逾時強制送出零速 |
 
 > `cmd_left_direction`／`cmd_right_direction` 與 `fb_left_direction`／`fb_right_direction` 為獨立參數：前者修正「送出指令」方向，後者修正「讀取回報轉速」方向。兩者物理上可能不同，實際數值需以實測為準，不可假設對稱。
+
+> **所有參數皆為 read-only，只能透過參數檔或 launch 參數在啟動時設定。** 節點在初始化時讀取一次後即快取，因此執行期的 `ros2 param set` 會直接回報錯誤（`Trying to set a read-only parameter`）而非默默失效。要變更設定請修改 YAML 或改用對應的 launch 參數後重新啟動。
 
 ### 6.2 關機服務參數（system_param.yaml）
 
@@ -272,6 +331,8 @@ tf 樹結構：
 | `stop_settle_timeout` | float | `3.0` | 倒數結束後等待底盤停穩的最長秒數，逾時放棄關機 |
 | `tick_period` | float | `0.1` | 倒數檢查與零速送出的週期（秒） |
 | `dry_run` | bool | `false` | 設為 `true` 時只記錄不真的關機，供驗證流程使用 |
+
+> 同 6.1，本節參數亦全為 read-only。特別注意 `dry_run` 與 `confirm_code`：無法以 `ros2 param set` 於執行期變更，要驗證關機流程請先修改 `system_param.yaml` 再重新啟動節點。
 
 ## 7. VCU 序列通訊協定摘要
 
