@@ -143,7 +143,7 @@ ros2 launch chassis_bringup bringup.launch.py
 | `vehicle_param_file` | 指定 `chassis_bringup/config/` 底下的參數檔名 | `vehicle_param_DD-M.yaml` |
 | `system_service` | 是否一併啟動關機服務節點 | `true` |
 | `system_param_file` | 指定關機服務的參數檔名 | `system_param.yaml` |
-| `localization_mode` | 車體位姿由誰負責，可填 `standalone`／`external_takeover`／`rep105_bridge`（見 5.4） | `standalone` |
+| `localization_mode` | 底盤主機端的定位整合組態，可填 `standalone`／`external_takeover`／`rep105_bridge`。一般由出廠設定，上位機開發者請改用 5.4 的遠端做法 | `standalone` |
 | `external_odom_topic` | `rep105_bridge` 模式下，`map_odom_bridge` 訂閱的外部里程計 topic | `external_odom` |
 
 > 依照購買的底盤型號選擇對應的xacro與vehicle_param。
@@ -235,44 +235,61 @@ tf 樹結構：
 
 #### 與外部定位系統整合
 
-若上位應用自行執行定位或建圖（IMU 融合、LIO、VIO 等），`odom → base_footprint` 這條 tf 必須只有一個發布者，否則兩邊會互相打架。透過 `localization_mode` 選擇由誰負責，不需要修改任何設定檔：
+若上位應用自行執行定位或建圖（IMU 融合、LIO、VIO 等），`odom → base_footprint` 這條 tf 必須只有一個發布者，否則兩邊會互相打架。依外部系統輸出的性質，有兩種對應方式：
 
-| 模式 | 底盤是否發 `odom → base_footprint` | 啟動 `map_odom_bridge` | 適用情境 |
-|---|---|---|---|
-| `standalone`（預設） | 是 | 否 | 只用底盤自身的輪速里程計 |
-| `external_takeover` | 否 | 否 | 外部套件會自行發布 `odom → base_footprint`，例如 `robot_localization` 的 EKF |
-| `rep105_bridge` | 是 | 是 | 外部系統輸出的是**地圖座標下的絕對位姿**，例如 LIO／VIO |
+| 外部系統輸出 | 對應方式 | 底盤是否發 `odom → base_footprint` |
+|---|---|---|
+| 無（只用底盤輪速里程計） | 預設，不需設定 | 是 |
+| 相對位姿，且自行發布 `odom → base_footprint`（如 `robot_localization` 的 EKF） | 情境一：關閉底盤的 `publish_tf` | 否 |
+| 地圖座標下的絕對位姿（如 LIO／VIO） | 情境二：於上位機執行 `map_odom_bridge` | 是 |
+
+> **關於出貨組態**：底盤附贈的運算主機（預設 Raspberry Pi）於開機時自動啟動上述 launch，模式由出廠設定決定，預設為 `standalone`。上位機（Orin、IPC 等）**不需要、也不應該**再執行一次 `bringup.launch.py` — 那會啟動第二個 `robot_state_publisher` 與底盤重複廣播輪關節 tf，並使 `chassis_driver` 因找不到序列埠而啟動失敗。上位機只需在同一 ROS 網域下訂閱／發布標準 topic。
+>
+> 因此下列兩種情境的設定，皆設計為**從上位機遠端完成**，不需登入底盤主機。
 
 **情境一：以 IMU 做感測融合（`robot_localization`）**
 
-EKF 節點會自行發布 `odom → base_footprint`，因此底盤必須讓出這條 tf：
+EKF 節點會自行發布 `odom → base_footprint`，因此底盤必須讓出這條 tf。`publish_tf` 可於執行期遠端切換，在上位機執行：
 
 ```bash
-ros2 launch chassis_bringup bringup.launch.py localization_mode:=external_takeover
+ros2 param set /chassis_driver publish_tf false
 ```
 
 EKF 側請將 `base_link_frame` 設為 `base_footprint`，與底盤的 `base_frame` 一致。
 
-> 此模式下底盤只發布 `/odom` topic，**不再廣播任何 tf**。若外部套件沒有接手發布 `odom → base_footprint`，tf 樹會從 `base_footprint` 斷開，RViz 中車體模型將無法定位、Nav2 亦無法運作。
+> **此設定不會保存。** 底盤主機重新開機後會回到參數檔的預設值（`true`）。請將上述指令納入上位機自己的啟動流程（例如 launch 檔中的 `ExecProcess`，或 bringup 腳本），確保每次開機後重新套用。若希望出廠即為 `false`，請於訂購時告知。
+
+> 此設定下底盤只發布 `/odom` topic，**不再廣播任何 tf**。若外部套件沒有接手發布 `odom → base_footprint`，tf 樹會從 `base_footprint` 斷開，RViz 中車體模型將無法定位、Nav2 亦無法運作。
 
 **情境二：外部系統輸出絕對位姿（LIO／VIO）**
 
-這類系統通常直接廣播 `map → 感測器` 的位姿。若讓它自行廣播，會與底盤的 tf 樹形成兩棵互不相連的樹。此時應改用 `rep105_bridge`：底盤照常發 `odom → base_footprint`，由 `map_odom_bridge` 補上 `map → odom` 的修正量，使 tf 樹維持單一根節點（符合 REP-105）：
+這類系統通常直接廣播 `map → 感測器` 的位姿。若讓它自行廣播，會與底盤的 tf 樹形成兩棵互不相連的樹。此時請改為訂閱其輸出並交由 `map_odom_bridge` 換算：底盤照常發 `odom → base_footprint`，由 bridge 補上 `map → odom` 的修正量，使 tf 樹維持單一根節點（符合 REP-105）：
 
 ```
 map → odom → base_footprint → base_link → { wheel_*, 買方感測器 }
 ```
 
+`map_odom_bridge` 不接觸序列埠，所需的 tf 與 topic 皆可跨機取得，因此**請在上位機執行**，不需登入底盤主機（`localization_mode:=rep105_bridge` 是提供給出廠預先組態使用的）。底盤維持預設的 `standalone` 即可：
+
 ```bash
-ros2 launch chassis_bringup bringup.launch.py \
-  localization_mode:=rep105_bridge \
-  external_odom_topic:=/lio/odometry
+ros2 run chassis_driver map_odom_bridge --ros-args \
+  -p sensor_frame:=<感測器 link 名稱> \
+  -r external_odom:=/lio/odometry
 ```
 
 使用前需完成兩件事：
 
-1. 在自己的 URDF 中，將感測器 link 以固定關節掛在 `base_link` 底下（機構尺寸請參照附贈的底盤技術文件）。
-2. 將 `vehicle_param_*.yaml` 中 `map_odom_bridge` 區塊的 `sensor_frame` 改為該 link 名稱（預設 `box_link`）。
+1. **在上位機發布 `base_link → 感測器 link` 的靜態 tf**，數值依實際機構安裝位置量測（機構尺寸請參照附贈的底盤技術文件）。底盤出貨的 URDF 不含買方自行加裝的感測器，此段需由買方補上，最簡單的方式是：
+
+   ```bash
+   ros2 run tf2_ros static_transform_publisher \
+     --x 0.2 --y 0 --z 0.5 --qx 0 --qy 0 --qz 0 --qw 1 \
+     --frame-id base_link --child-frame-id <感測器 link 名稱>
+   ```
+
+   若上位機已有自己的 URDF 與 `robot_state_publisher`，也可將感測器 link 掛在 `base_link` 底下由其廣播；只要不重複發布底盤已有的關節即可。
+
+2. 將上述 `sensor_frame` 設為該 link 名稱（預設 `box_link`）。
 
 `map_odom_bridge` 可用參數：
 
@@ -306,14 +323,16 @@ ros2 launch chassis_bringup bringup.launch.py \
 | `cmd_right_direction` | int（1 或 -1） | `1` | 送出指令時，右馬達方向修正 |
 | `fb_left_direction` | int（1 或 -1） | `1` | 讀取回報時，左馬達方向修正 |
 | `fb_right_direction` | int（1 或 -1） | `1` | 讀取回報時，右馬達方向修正 |
-| `publish_tf` | bool | `true` | 是否廣播 `odom → base_footprint` tf。一般透過 `localization_mode` 間接設定（見 5.4），不需直接修改 |
+| `publish_tf` | bool | `true` | 是否廣播 `odom → base_footprint` tf。**可執行期遠端調整**（見 5.4） |
 | `odom_frame` | string | `odom` | 里程計座標系名稱，同時套用於 `/odom` 訊息與 tf |
 | `base_frame` | string | `base_footprint` | 車體座標系名稱，同時套用於 `/odom` 訊息與 tf |
-| `cmd_vel_timeout` | float | `0.5` | `/cmd_vel` 逾時秒數，逾時強制送出零速 |
+| `cmd_vel_timeout` | float | `0.5` | `/cmd_vel` 逾時秒數，逾時強制送出零速。**可執行期遠端調整**，須大於 0 |
 
 > `cmd_left_direction`／`cmd_right_direction` 與 `fb_left_direction`／`fb_right_direction` 為獨立參數：前者修正「送出指令」方向，後者修正「讀取回報轉速」方向。兩者物理上可能不同，實際數值需以實測為準，不可假設對稱。
 
-> **所有參數皆為 read-only，只能透過參數檔或 launch 參數在啟動時設定。** 節點在初始化時讀取一次後即快取，因此執行期的 `ros2 param set` 會直接回報錯誤（`Trying to set a read-only parameter`）而非默默失效。要變更設定請修改 YAML 或改用對應的 launch 參數後重新啟動。
+> **僅 `publish_tf` 與 `cmd_vel_timeout` 可於執行期以 `ros2 param set` 調整**，供上位機遠端設定，不需登入底盤主機。兩者皆不會保存，底盤重新開機後回到參數檔的值。
+>
+> **其餘參數皆為 read-only**，只能透過參數檔或 launch 參數在啟動時設定。它們是機型校正值與硬體組態，誤改會導致底盤速度錯誤或方向相反，因此執行期的 `ros2 param set` 會直接回報錯誤（`Trying to set a read-only parameter`）而非默默失效。
 
 ### 6.2 關機服務參數（system_param.yaml）
 
