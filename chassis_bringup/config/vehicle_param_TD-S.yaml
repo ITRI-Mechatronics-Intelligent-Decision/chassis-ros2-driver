@@ -1,0 +1,32 @@
+chassis_driver:
+  ros__parameters:
+    port: /dev/ttyUSB_chassis
+    baudrate: 19200
+    serial_timeout: 0.5
+    send_interval: 0.1
+    gear_ratio: 33.0
+    # 驅動鏈輪半徑，CAD 值 0.094 m；履帶車的有效值需實測校正
+    wheel_radius: 0.094
+    # 幾何輪距 0.44 m；履帶車因打滑，有效轉向寬度需以 UMBmark 實測
+    wheel_separation: 0.44
+    cmd_left_direction: 1
+    cmd_right_direction: 1
+    fb_left_direction: 1
+    fb_right_direction: 1
+    left_wheel_joints:        [wheel_front_left_joint, wheel_rear_left_joint]
+    right_wheel_joints:       [wheel_front_right_joint, wheel_rear_right_joint]
+    # 被動輪隨履帶轉動，半徑較小故角速度較快：驅動輪 R=0.094 / 被動輪 R=0.061
+    left_wheel_joint_ratios:  [1.0, 1.54]
+    right_wheel_joint_ratios: [1.0, 1.54]
+    publish_tf: true
+    odom_frame: odom
+    base_frame: base_footprint
+    cmd_vel_timeout: 0.5
+
+# Only started by localization_mode:=rep105_bridge.
+map_odom_bridge:
+  ros__parameters:
+    map_frame: map
+    odom_frame: odom
+    base_frame: base_footprint
+    sensor_frame: box_link

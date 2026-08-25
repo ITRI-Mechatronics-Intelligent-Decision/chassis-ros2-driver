@@ -7,6 +7,12 @@ The chassis model is selected by name from chassis_description/config/models.yam
 xacro_file and vehicle_param_file stay available to override either half of the
 registry entry, e.g. to test a work-in-progress parameter set.
 
+description_package lets an external overlay package (e.g. a devkit) supply its
+own xacro while still pulling vehicle params from the model registry:
+
+    ros2 launch chassis_bringup bringup.launch.py model:=TD-S \
+        description_package:=chicken_devkit xacro_file:=td_s_full.xacro
+
 localization_mode picks how the chassis pose reaches the TF tree:
 
     standalone         chassis broadcasts odom -> base_frame itself (default)
@@ -25,7 +31,8 @@ from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import Command, LaunchConfiguration
 from launch_ros.actions import Node
 
-sys.path.insert(0, os.path.join(get_package_share_directory('chassis_description'), 'launch'))
+sys.path.insert(0, os.path.join(
+    get_package_share_directory('chassis_description'), 'launch'))
 
 from model_registry import default_model, model_entry  # noqa: E402
 
@@ -40,11 +47,17 @@ LOCALIZATION_MODES = {
 def _launch_setup(context, *args, **kwargs):
     model = LaunchConfiguration('model').perform(context)
     xacro_file = LaunchConfiguration('xacro_file').perform(context)
-    vehicle_param_file = LaunchConfiguration('vehicle_param_file').perform(context)
+    vehicle_param_file = LaunchConfiguration(
+        'vehicle_param_file').perform(context)
+    description_package = LaunchConfiguration(
+        'description_package').perform(context)
     system_service = LaunchConfiguration('system_service').perform(context)
-    system_param_file = LaunchConfiguration('system_param_file').perform(context)
-    localization_mode = LaunchConfiguration('localization_mode').perform(context)
-    external_odom_topic = LaunchConfiguration('external_odom_topic').perform(context)
+    system_param_file = LaunchConfiguration(
+        'system_param_file').perform(context)
+    localization_mode = LaunchConfiguration(
+        'localization_mode').perform(context)
+    external_odom_topic = LaunchConfiguration(
+        'external_odom_topic').perform(context)
 
     if localization_mode not in LOCALIZATION_MODES:
         raise RuntimeError(
@@ -58,15 +71,17 @@ def _launch_setup(context, *args, **kwargs):
     vehicle_param_file = vehicle_param_file or entry['vehicle_param']
 
     xacro_path = os.path.join(
-        get_package_share_directory('chassis_description'), 'urdf', xacro_file
+        get_package_share_directory(description_package), 'urdf', xacro_file
     )
     vehicle_param_path = os.path.join(
-        get_package_share_directory('chassis_bringup'), 'config', vehicle_param_file
+        get_package_share_directory(
+            'chassis_bringup'), 'config', vehicle_param_file
     )
 
     for path in (xacro_path, vehicle_param_path):
         if not os.path.exists(path):
-            raise RuntimeError(f"Model '{model}' refers to a missing file: {path}")
+            raise RuntimeError(
+                f"Model '{model}' refers to a missing file: {path}")
 
     robot_description = Command(['xacro ', xacro_path])
 
@@ -98,10 +113,12 @@ def _launch_setup(context, *args, **kwargs):
 
     if system_service.lower() in ('true', '1'):
         system_param_path = os.path.join(
-            get_package_share_directory('chassis_bringup'), 'config', system_param_file
+            get_package_share_directory(
+                'chassis_bringup'), 'config', system_param_file
         )
         if not os.path.exists(system_param_path):
-            raise RuntimeError(f'Missing system parameter file: {system_param_path}')
+            raise RuntimeError(
+                f'Missing system parameter file: {system_param_path}')
         nodes.append(
             Node(
                 package='chassis_system',
@@ -129,6 +146,11 @@ def generate_launch_description():
         'vehicle_param_file',
         default_value='',
         description='Override the parameter yaml file name under chassis_bringup/config/',
+    )
+    description_package_arg = DeclareLaunchArgument(
+        'description_package',
+        default_value='chassis_description',
+        description='Package supplying the xacro file (override for devkit overlays)',
     )
 
     system_service_arg = DeclareLaunchArgument(
@@ -160,6 +182,7 @@ def generate_launch_description():
         model_arg,
         xacro_file_arg,
         vehicle_param_file_arg,
+        description_package_arg,
         system_service_arg,
         system_param_file_arg,
         localization_mode_arg,

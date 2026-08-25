@@ -25,8 +25,9 @@
 
   <!-- ═══════════════════════════════════════════
        Base footprint link
+       Ground contact is the wheel bottom: offset = wheel_radius - wheel_z.
   ══════════════════════════════════════════════ -->
-  <xacro:base_footprint wheel_radius="${wheel_radius}" wheel_z="${wheel_z}" />
+  <xacro:base_footprint ground_offset="${wheel_radius - wheel_z}" />
 
   <!-- ═══════════════════════════════════════════
        Base link

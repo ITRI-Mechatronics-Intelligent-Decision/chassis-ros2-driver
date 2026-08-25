@@ -15,16 +15,18 @@
   <!-- ═══════════════════════════════════════════
        Base footprint link
        params:
-         wheel_radius — wheel radius (m)
-         wheel_z      — wheel axis height in base_link frame (m)
+         ground_offset — height of base_link origin above the ground (m).
+                         Wheeled models compute this as wheel_radius - wheel_z;
+                         tracked models measure it directly off the CAD
+                         (ground contact is the track underside, not a wheel).
   ══════════════════════════════════════════════ -->
-  <xacro:macro name="base_footprint" params="wheel_radius wheel_z">
+  <xacro:macro name="base_footprint" params="ground_offset">
     <link name="base_footprint"/>
 
     <joint name="base_footprint_joint" type="fixed">
       <parent link="base_footprint" />
       <child  link="base_link" />
-      <origin xyz="0 0 ${wheel_radius - wheel_z}" rpy="0 0 0" />
+      <origin xyz="0 0 ${ground_offset}" rpy="0 0 0" />
     </joint>
   </xacro:macro>
 

@@ -47,6 +47,23 @@ class ChassisDriverNode(Node):
         self._base_frame = params["base_frame"]
         self._cmd_vel_timeout = params["cmd_vel_timeout"]
 
+        self._left_joints = params["left_wheel_joints"]
+        self._left_ratios = params["left_wheel_joint_ratios"]
+        self._right_joints = params["right_wheel_joints"]
+        self._right_ratios = params["right_wheel_joint_ratios"]
+        if len(self._left_joints) != len(self._left_ratios):
+            raise RuntimeError(
+                f"left_wheel_joints ({len(self._left_joints)}) and "
+                f"left_wheel_joint_ratios ({len(self._left_ratios)}) "
+                f"must have equal length"
+            )
+        if len(self._right_joints) != len(self._right_ratios):
+            raise RuntimeError(
+                f"right_wheel_joints ({len(self._right_joints)}) and "
+                f"right_wheel_joint_ratios ({len(self._right_ratios)}) "
+                f"must have equal length"
+            )
+
         self._serial = ChassisSerial(
             port=params["port"],
             baudrate=params["baudrate"],
@@ -93,6 +110,22 @@ class ChassisDriverNode(Node):
         self.declare_parameter("cmd_right_direction", 1, _startup_only())
         self.declare_parameter("fb_left_direction", 1, _startup_only())
         self.declare_parameter("fb_right_direction", 1, _startup_only())
+        self.declare_parameter(
+            "left_wheel_joints",
+            ["wheel_front_left_joint", "wheel_rear_left_joint"],
+            _startup_only(),
+        )
+        self.declare_parameter(
+            "right_wheel_joints",
+            ["wheel_front_right_joint", "wheel_rear_right_joint"],
+            _startup_only(),
+        )
+        self.declare_parameter(
+            "left_wheel_joint_ratios", [1.0, 1.0], _startup_only()
+        )
+        self.declare_parameter(
+            "right_wheel_joint_ratios", [1.0, 1.0], _startup_only()
+        )
         # publish_tf 與 cmd_vel_timeout 刻意保持可寫：底盤出貨後由買方的上位機
         # 透過 DDS 遠端調整，不預期有人登入底盤主機（見 README 5.4）。
         self.declare_parameter("publish_tf", True)
@@ -113,6 +146,10 @@ class ChassisDriverNode(Node):
             "cmd_right_direction": self.get_parameter("cmd_right_direction").value,
             "fb_left_direction": self.get_parameter("fb_left_direction").value,
             "fb_right_direction": self.get_parameter("fb_right_direction").value,
+            "left_wheel_joints": self.get_parameter("left_wheel_joints").value,
+            "right_wheel_joints": self.get_parameter("right_wheel_joints").value,
+            "left_wheel_joint_ratios": self.get_parameter("left_wheel_joint_ratios").value,
+            "right_wheel_joint_ratios": self.get_parameter("right_wheel_joint_ratios").value,
             "publish_tf": self.get_parameter("publish_tf").value,
             "odom_frame": self.get_parameter("odom_frame").value,
             "base_frame": self.get_parameter("base_frame").value,
@@ -236,19 +273,15 @@ class ChassisDriverNode(Node):
 
         msg = JointState()
         msg.header.stamp = stamp.to_msg()
-        msg.name = [
-            "wheel_front_left_joint",
-            "wheel_rear_left_joint",
-            "wheel_front_right_joint",
-            "wheel_rear_right_joint",
-        ]
-        msg.position = [
-            self._wheel_angle_left,
-            self._wheel_angle_left,
-            self._wheel_angle_right,
-            self._wheel_angle_right,
-        ]
-        msg.velocity = [left_vel, left_vel, right_vel, right_vel]
+        msg.name = self._left_joints + self._right_joints
+        msg.position = (
+            [self._wheel_angle_left * r for r in self._left_ratios]
+            + [self._wheel_angle_right * r for r in self._right_ratios]
+        )
+        msg.velocity = (
+            [left_vel * r for r in self._left_ratios]
+            + [right_vel * r for r in self._right_ratios]
+        )
         self._joint_state_pub.publish(msg)
 
     def _publish_battery_state(self, state: dict, stamp):

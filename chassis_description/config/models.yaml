@@ -9,7 +9,7 @@
 #   ros2 launch chassis_description display.launch.py model:=DD-M-HH
 #   ros2 launch chassis_bringup     bringup.launch.py model:=DD-M-HH
 
-default_model: DD-M
+default_model: DD-M-HH
 
 models:
   DD-M:
@@ -22,4 +22,10 @@ models:
     xacro: chassis_DD-M-HH.xacro
     rviz: static_view.rviz
     vehicle_param: vehicle_param_DD-M-HH.yaml
-    description: DD-M 加高車身衍生型（噴藥車底盤），軸距 0.56 m
+    description: DD-M 加高車身衍生型，軸距 0.56 m
+
+  TD-S:
+    xacro: chassis_TD-S.xacro
+    rviz: static_view.rviz
+    vehicle_param: vehicle_param_TD-S.yaml
+    description: 差速式小型履帶底盤，兩驅動輪 + 兩被動輪
