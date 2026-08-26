@@ -10,9 +10,8 @@
   joint_states（角速度依前後輪半徑比換算，見 chassis_driver 的
   *_wheel_joint_ratios 參數，非本檔案職責）。
 
-  IMU（矽林 CH104）隨底盤出貨，因此包含於此。
-  頭部支架（head_link）與相機（D435_link）屬於部門二次開發的掛載物，
-  刻意不放在這裡 —— 依 CAD 量測會跟著出貨的裸底盤只到輪子與 IMU 為止，
+  頭部支架（head_link）、IMU、相機（D435_link）等屬於部門二次開發的掛載物，
+  刻意不放在這裡 —— 裸底盤只到輪子為止，
   感測器／致動器由下游 devkit 專案疊加，見協作討論紀錄。
 -->
 <robot name="chassis" xmlns:xacro="http://www.ros.org/wiki/xacro">
@@ -107,39 +106,5 @@
                com_y="0.00077635"
                color="0.75294 0.75294 0.75294" />
 
-  <!-- ═══════════════════════════════════════════
-       IMU（矽林 CH104）
-  ══════════════════════════════════════════════ -->
-  <link name="imu_link">
-    <inertial>
-      <origin xyz="0.0 0.00049093 -0.0028775" rpy="0 0 0" />
-      <mass value="0.015203" />
-      <inertia
-        ixx="3.4532E-06" ixy="0.0"        ixz="0.0"
-        iyy="3.5859E-06" iyz="1.6004E-09"
-        izz="5.6462E-06" />
-    </inertial>
-    <visual>
-      <origin xyz="0 0 0" rpy="0 0 0" />
-      <geometry>
-        <mesh filename="package://chassis_description/meshes/${mesh_dir}/imu_link.STL" />
-      </geometry>
-      <material name="imu_color">
-        <color rgba="1 1 1 1" />
-      </material>
-    </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 0 0" />
-      <geometry>
-        <mesh filename="package://chassis_description/meshes/${mesh_dir}/imu_link.STL" />
-      </geometry>
-    </collision>
-  </link>
-
-  <joint name="imu_joint" type="fixed">
-    <origin xyz="-0.0645 0 0.2995" rpy="0 0 0" />
-    <parent link="base_link" />
-    <child  link="imu_link" />
-  </joint>
 
 </robot>
