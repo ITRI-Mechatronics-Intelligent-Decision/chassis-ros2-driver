@@ -33,7 +33,7 @@
   <!-- ═══════════════════════════════════════════
        Wheel macro
        params:
-         mesh_dir  — mesh sub-directory under meshes/ (e.g. DD-M)
+         mesh_dir  — mesh sub-directory under meshes/ (e.g. ITRI-UGV-TD050-BP)
          name      — prefix used for link/joint/mesh names (e.g. front_left)
          x         — joint origin X
          y         — joint origin Y (positive = left)

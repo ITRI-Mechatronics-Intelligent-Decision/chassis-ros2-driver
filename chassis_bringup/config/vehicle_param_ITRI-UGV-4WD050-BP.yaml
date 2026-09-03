@@ -4,16 +4,15 @@ chassis_driver:
     baudrate: 19200
     serial_timeout: 0.5
     send_interval: 0.1
-    # 傳動與方向修正沿用 DD-M，尚未於 DD-M-HH 實機校正，出貨前須依 CLAUDE.md §5.1 驗證。
     gear_ratio: 50.0
-    wheel_radius: 0.2032
-    wheel_separation: 0.6221
+    # 10 吋充氣輪，直徑 265 mm
+    wheel_radius: 0.1325
+    # 輪距 = 2 × 0.20405 m
+    wheel_separation: 0.4081
     cmd_left_direction: 1
     cmd_right_direction: 1
     fb_left_direction: 1
     fb_right_direction: 1
-    # false: publish /odom only and let an external localiser own odom -> base_frame.
-    # bringup.launch.py overrides this from localization_mode.
     publish_tf: true
     odom_frame: odom
     base_frame: base_footprint
@@ -25,6 +24,4 @@ map_odom_bridge:
     map_frame: map
     odom_frame: odom
     base_frame: base_footprint
-    # Sensor link the external localiser reports its pose for. The buyer mounts
-    # this link under base_link in their own URDF and sets the name here.
     sensor_frame: box_link

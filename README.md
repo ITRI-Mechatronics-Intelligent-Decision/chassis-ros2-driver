@@ -1,6 +1,9 @@
 # ITRI 底盤 ROS2 驅動層（chassis-ros2-driver）
 文件日期：2026 年 7 月
 
+
+TODO: 如何切換車型
+
 ## 簡介
 
 `chassis_driver` 是底盤與上位應用之間的轉譯層，將底盤控制板（VCU）的 RS485 二進位通訊協定封裝為標準 ROS2 介面。上位開發者不需要處理序列通訊、封包編解碼、運動學換算，只需訂閱／發布標準 topic，即可直接串接 Nav2、SLAM、`robot_localization` 等現成 ROS2 生態系套件。
@@ -10,8 +13,7 @@ RS485 序列埠為單一裝置獨佔資源，因此所有與 VCU 的通訊邏輯
 ## 支援機型
 | 型號 | 產品圖片 |
 |---|---|
-| DD-M | ![DD-M](docs/images/DD-M.png) |
-| DD-M-HH | ![DD-M-HH](docs/images/DD-M-HH.png) |
+| ITRI-UGV-4WD250-BP | ![ITRI-UGV-4WD250-BP](docs/images/ITRI-UGV-4WD250-BP.png) |
 
 ## 目錄
 
@@ -89,7 +91,13 @@ sudo udevadm control --reload-rules
 sudo udevadm trigger
 ```
 
-### 4.3 序列埠權限
+### 4.3 安裝相關函式
+- pyserial
+```bash
+pip install pyserial
+```
+
+### 4.4 序列埠權限
 
 將使用者加入 `dialout` 群組（需登出重新登入才生效）：
 
@@ -97,7 +105,7 @@ sudo udevadm trigger
 sudo usermod -aG dialout $USER
 ```
 
-### 4.4 關機服務授權（sudoers）
+### 4.5 關機服務授權（sudoers）
 
 `/system/shutdown` 需要免密碼執行 `shutdown`，否則呼叫時只會在 log 看到
 `shutdown command exited with 1`。授權檔範本位於
@@ -121,7 +129,7 @@ sudo -n -l /sbin/shutdown -h now
 > 未安裝此檔時，其餘功能完全不受影響，只有關機服務會在執行階段失敗。
 > 若想在不斷電的情況下先驗證整條流程，把 `system_param.yaml` 的 `dry_run` 設為 `true`。
 
-### 4.5 編譯
+### 4.6 編譯
 
 ```bash
 cd chassis_ws
@@ -129,7 +137,7 @@ colcon build --symlink-install
 source install/setup.bash
 ```
 
-### 4.6 啟動底盤
+### 4.7 啟動底盤
 
 ```bash
 ros2 launch chassis_bringup bringup.launch.py
@@ -139,8 +147,8 @@ ros2 launch chassis_bringup bringup.launch.py
 
 | 參數 | 說明 | 預設值 |
 |---|---|---|
-| `xacro_file` | 指定 `chassis_description/urdf/` 底下的 xacro 檔名 | `chassis_DD-M.xacro` |
-| `vehicle_param_file` | 指定 `chassis_bringup/config/` 底下的參數檔名 | `vehicle_param_DD-M.yaml` |
+| `xacro_file` | 指定 `chassis_description/urdf/` 底下的 xacro 檔名 | `chassis_ITRI-UGV-4WD050-BP.xacro` |
+| `vehicle_param_file` | 指定 `chassis_bringup/config/` 底下的參數檔名 | `vehicle_param_ITRI-UGV-4WD050-BP.yaml` |
 | `system_service` | 是否一併啟動關機服務節點 | `true` |
 | `system_param_file` | 指定關機服務的參數檔名 | `system_param.yaml` |
 | `localization_mode` | 底盤主機端的定位整合組態，可填 `standalone`／`external_takeover`／`rep105_bridge`。一般由出廠設定，上位機開發者請改用 5.4 的遠端做法 | `standalone` |
@@ -148,7 +156,7 @@ ros2 launch chassis_bringup bringup.launch.py
 
 > 依照購買的底盤型號選擇對應的xacro與vehicle_param。
 
-### 4.7 基本操作驗證
+### 4.8 基本操作驗證
 
 鍵盤遙控測試（需另行安裝 `teleop_twist_keyboard`）：
 

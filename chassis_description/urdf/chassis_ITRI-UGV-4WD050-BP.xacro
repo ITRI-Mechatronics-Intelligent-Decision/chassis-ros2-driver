@@ -1,4 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  ITRI-UGV-4WD050-BP — 差速式四輪小型底盤，四輪滑差轉向（4WD, 50 kg 荷重等級，舊代號 WD-S-D10）。
+
+  10 吋充氣輪（265 mm 直徑 × 90 mm 寬），四輪同尺寸。
+  軸距 0.32 m，輪距 0.4081 m。
+
+  SolidWorks 匯出的旋轉軸慣例（右輪 +Y、左輪 -Y）已統一為
+  chassis_common.xacro 慣例（左輪 axis_y=+1、右輪 axis_y=-1）。
+-->
 <robot name="chassis" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
   <xacro:include filename="chassis_common.xacro" />
@@ -6,22 +15,17 @@
   <!-- ═══════════════════════════════════════════
        Chassis geometry parameters
   ══════════════════════════════════════════════ -->
-  <xacro:property name="mesh_dir"  value="DD-M"     />  <!-- meshes/<mesh_dir>/ -->
-  <xacro:property name="front_x"   value="0.275"    />  <!-- wheelbase/2 front  (m) -->
-  <xacro:property name="rear_x"    value="-0.275"   />  <!-- wheelbase/2 rear   (m) -->
-  <xacro:property name="track_y"   value="0.31105"  />  <!-- half track width   (m) -->
-  <xacro:property name="wheel_z"   value="0"        />  <!-- wheel axis height  (m) -->
-  <xacro:property name="wheel_radius" value="0.2032"  />  <!-- wheel radius, 16" diameter (m) -->
+  <xacro:property name="mesh_dir"      value="ITRI-UGV-4WD050-BP" />
+  <xacro:property name="front_x"       value="0.16"      />  <!-- wheelbase/2 front  (m) -->
+  <xacro:property name="rear_x"        value="-0.16"     />  <!-- wheelbase/2 rear   (m) -->
+  <xacro:property name="track_y"       value="0.20405"   />  <!-- half track width   (m) -->
+  <xacro:property name="wheel_z"       value="0"         />  <!-- wheel axis height  (m) -->
+  <xacro:property name="wheel_radius"  value="0.1325"    />  <!-- 265 mm / 2 (m) -->
 
-
-  <!-- Wheel inertia (ixx == izz for axisymmetric wheel) -->
-  <xacro:property name="front_wheel_mass"  value="11.628" />
-  <xacro:property name="front_wheel_ixx"   value="0.16498" />
-  <xacro:property name="front_wheel_iyy"   value="0.30566" />
-
-  <xacro:property name="rear_wheel_mass"   value="11.607" />
-  <xacro:property name="rear_wheel_ixx"    value="0.16443" />
-  <xacro:property name="rear_wheel_iyy"    value="0.30566" />
+  <!-- Wheel inertia — four identical wheels (ixx ≈ izz, axisymmetric) -->
+  <xacro:property name="wheel_mass" value="0.27699"  />
+  <xacro:property name="wheel_ixx"  value="0.0019018" />
+  <xacro:property name="wheel_iyy"  value="0.0032348" />
 
   <!-- ═══════════════════════════════════════════
        Base footprint link
@@ -34,12 +38,12 @@
   ══════════════════════════════════════════════ -->
   <link name="base_link">
     <inertial>
-      <origin xyz="0.00084846 -0.0002491 0.06999" rpy="0 0 0" />
-      <mass value="11.221" />
+      <origin xyz="-0.003519 -0.00051588 0.085535" rpy="0 0 0" />
+      <mass value="5.4129" />
       <inertia
-        ixx="0.33572"  ixy="-3.5828E-09" ixz="-0.00054353"
-        iyy="0.54427"  iyz="-4.2841E-07"
-        izz="0.69255" />
+        ixx="0.072347"  ixy="0.0008194"  ixz="0.0001722"
+        iyy="0.096276"  iyz="0.0002535"
+        izz="0.12254" />
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0" />
@@ -47,7 +51,7 @@
         <mesh filename="package://chassis_description/meshes/${mesh_dir}/base_link.STL" />
       </geometry>
       <material name="white">
-        <color rgba="1 1 1 1" />
+        <color rgba="0.79216 0.81961 0.93333 1" />
       </material>
     </visual>
     <collision>
@@ -63,26 +67,26 @@
   ══════════════════════════════════════════════ -->
   <xacro:wheel mesh_dir="${mesh_dir}" name="front_left"
                x="${front_x}"  y="${track_y}"   z="${wheel_z}"  axis_y="1"
-               mass="${front_wheel_mass}" ixx="${front_wheel_ixx}" iyy="${front_wheel_iyy}"
-               com_y="-0.001691"
-               color="0.50196 0.50196 0.50196" />
+               mass="${wheel_mass}" ixx="${wheel_ixx}" iyy="${wheel_iyy}"
+               com_y="-8.2118E-06"
+               color="0.79216 0.81961 0.93333" />
 
   <xacro:wheel mesh_dir="${mesh_dir}" name="front_right"
                x="${front_x}"  y="${-track_y}"  z="${wheel_z}"  axis_y="-1"
-               mass="${front_wheel_mass}" ixx="${front_wheel_ixx}" iyy="${front_wheel_iyy}"
-               com_y="0.001691"
-               color="0.50196 0.50196 0.50196" />
+               mass="${wheel_mass}" ixx="${wheel_ixx}" iyy="${wheel_iyy}"
+               com_y="8.2118E-06"
+               color="0.79216 0.81961 0.93333" />
 
   <xacro:wheel mesh_dir="${mesh_dir}" name="rear_left"
                x="${rear_x}"   y="${track_y}"   z="${wheel_z}"  axis_y="1"
-               mass="${rear_wheel_mass}"  ixx="${rear_wheel_ixx}"  iyy="${rear_wheel_iyy}"
-               com_y="-0.0011969"
-               color="0.50196 0.50196 0.50196" />
+               mass="${wheel_mass}" ixx="${wheel_ixx}" iyy="${wheel_iyy}"
+               com_y="-8.2118E-06"
+               color="0.79216 0.81961 0.93333" />
 
   <xacro:wheel mesh_dir="${mesh_dir}" name="rear_right"
                x="${rear_x}"   y="${-track_y}"  z="${wheel_z}"  axis_y="-1"
-               mass="${rear_wheel_mass}"  ixx="${rear_wheel_ixx}"  iyy="${rear_wheel_iyy}"
-               com_y="0.0011969"
-               color="0.50196 0.50196 0.50196"/>
+               mass="${wheel_mass}" ixx="${wheel_ixx}" iyy="${wheel_iyy}"
+               com_y="8.2118E-06"
+               color="0.79216 0.81961 0.93333" />
 
 </robot>

@@ -2,7 +2,7 @@
 
 The chassis model is selected by name from chassis_description/config/models.yaml:
 
-    ros2 launch chassis_bringup bringup.launch.py model:=DD-M-HH
+    ros2 launch chassis_bringup bringup.launch.py model:=ITRI-UGV-4WD250-BP
 
 xacro_file and vehicle_param_file stay available to override either half of the
 registry entry, e.g. to test a work-in-progress parameter set.
@@ -10,7 +10,7 @@ registry entry, e.g. to test a work-in-progress parameter set.
 description_package lets an external overlay package (e.g. a devkit) supply its
 own xacro while still pulling vehicle params from the model registry:
 
-    ros2 launch chassis_bringup bringup.launch.py model:=TD-S \
+    ros2 launch chassis_bringup bringup.launch.py model:=ITRI-UGV-TD050-BP \
         description_package:=chicken_devkit xacro_file:=td_s_full.xacro
 
 localization_mode picks how the chassis pose reaches the TF tree:

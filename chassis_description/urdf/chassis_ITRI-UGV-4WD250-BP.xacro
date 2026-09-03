@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  DD-M-HH — DD-M 的加高車身衍生型（噴藥車底盤）。
+  ITRI-UGV-4WD250-BP — 加高車身衍生型（噴藥車底盤，舊代號 DD-M-HH）。
 
   座標系說明（重要）：
-  SolidWorks 匯出的 DD-M-HH.SLDASM.urdf 其組合圖全域座標相對 DD-M **繞 Z 轉了 180°**
+  SolidWorks 匯出的 DD-M-HH.SLDASM.urdf 其組合圖全域座標相對標準車身版本 **繞 Z 轉了 180°**
   ——四個輪關節都帶 rpy="0 0 3.1416"，且 front_left 落在 x = -0.28。
   本檔已把整車轉回 ROS 慣例（+x 為車頭、+y 為左側）：
 
@@ -22,7 +22,7 @@
   <!-- ═══════════════════════════════════════════
        Chassis geometry parameters
   ══════════════════════════════════════════════ -->
-  <xacro:property name="mesh_dir"  value="DD-M-HH"    />  <!-- meshes/<mesh_dir>/ -->
+  <xacro:property name="mesh_dir"  value="ITRI-UGV-4WD250-BP" />  <!-- meshes/<mesh_dir>/ -->
   <xacro:property name="front_x"   value="0.28"       />  <!-- wheelbase/2 front  (m) -->
   <xacro:property name="rear_x"    value="-0.28"      />  <!-- wheelbase/2 rear   (m) -->
   <xacro:property name="track_y"   value="0.31105"    />  <!-- half track width   (m) -->

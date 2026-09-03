@@ -2,7 +2,7 @@
 
 The model is selected by name from chassis_description/config/models.yaml:
 
-    ros2 launch chassis_description display.launch.py model:=DD-M-HH
+    ros2 launch chassis_description display.launch.py model:=ITRI-UGV-4WD250-BP
 """
 
 import os

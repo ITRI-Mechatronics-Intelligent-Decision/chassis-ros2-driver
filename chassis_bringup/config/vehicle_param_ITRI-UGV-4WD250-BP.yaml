@@ -4,6 +4,7 @@ chassis_driver:
     baudrate: 19200
     serial_timeout: 0.5
     send_interval: 0.1
+    # 傳動與方向修正沿用標準車身版本，尚未於本車型（加高車身）實機校正，出貨前須依 CLAUDE.md §5.1 驗證。
     gear_ratio: 50.0
     wheel_radius: 0.2032
     wheel_separation: 0.6221

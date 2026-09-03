@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  TD-S — 差速式履帶底盤（Tracked Differential, Small）。
+  ITRI-UGV-TD050-BP — 差速式履帶底盤（Tracked Differential, 50 kg 荷重等級，舊代號 TD-S）。
 
   履帶本身包在 base_link.STL 裡（機構匯出時已含履帶外形，見 CAD 量測），
   因此本檔只放四顆輪子（前 = 主動輪、後 = 惰輪），不對履帶本身建 joint —
@@ -21,7 +21,7 @@
   <!-- ═══════════════════════════════════════════
        Chassis geometry parameters
   ══════════════════════════════════════════════ -->
-  <xacro:property name="mesh_dir"  value="TD-S"     />  <!-- meshes/<mesh_dir>/ -->
+  <xacro:property name="mesh_dir"  value="ITRI-UGV-TD050-BP" />  <!-- meshes/<mesh_dir>/ -->
   <xacro:property name="front_x"   value="0.135"    />  <!-- 主動輪（前）x（m） -->
   <xacro:property name="rear_x"    value="-0.155"   />  <!-- 惰輪（後）x（m） -->
   <xacro:property name="track_y"   value="0.22"     />  <!-- 左右輪心 y（m） -->

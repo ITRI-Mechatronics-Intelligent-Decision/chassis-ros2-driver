@@ -5,27 +5,34 @@
 #   vehicle_param : chassis_bringup/config/ 下的檔名（bringup.launch.py 使用）
 #   description   : 人類可讀的機型說明
 #
+# 命名規則：開發機構 - 載具類型 - 驅動型式+荷重等級 - 載台型態
+#   開發機構     : ITRI
+#   載具類型     : UGV / UAV
+#   驅動型式     : TD（履帶差動）WD（輪式差動）4WD（四輪滑差）ACR（阿克曼轉向）
+#   荷重等級     : 010（10 公斤）050（50 公斤）100（100 公斤）250（250 公斤）
+#   載台型態     : BP（基礎平台）DEV（開發者版本）
+#
 # 用法：
-#   ros2 launch chassis_description display.launch.py model:=DD-M-HH
-#   ros2 launch chassis_bringup     bringup.launch.py model:=DD-M-HH
+#   ros2 launch chassis_description display.launch.py model:=ITRI-UGV-4WD250-BP
+#   ros2 launch chassis_bringup     bringup.launch.py model:=ITRI-UGV-4WD250-BP
 
-default_model: DD-M-HH
+default_model: ITRI-UGV-4WD050-BP
 
 models:
-  DD-M:
-    xacro: chassis_DD-M.xacro
+  ITRI-UGV-4WD250-BP:
+    xacro: chassis_ITRI-UGV-4WD250-BP.xacro
     rviz: static_view.rviz
-    vehicle_param: vehicle_param_DD-M.yaml
-    description: 差速式四輪底盤，標準車身
+    vehicle_param: vehicle_param_ITRI-UGV-4WD250-BP.yaml
+    description: 四輪滑差底盤，加高車身衍生型（噴藥車底盤），軸距 0.56 m，250 公斤荷重等級（舊代號 DD-M-HH）
 
-  DD-M-HH:
-    xacro: chassis_DD-M-HH.xacro
+  ITRI-UGV-TD050-BP:
+    xacro: chassis_ITRI-UGV-TD050-BP.xacro
     rviz: static_view.rviz
-    vehicle_param: vehicle_param_DD-M-HH.yaml
-    description: DD-M 加高車身衍生型，軸距 0.56 m
+    vehicle_param: vehicle_param_ITRI-UGV-TD050-BP.yaml
+    description: 履帶差動小型底盤，兩驅動輪 + 兩被動輪，50 公斤荷重等級（舊代號 TD-S）
 
-  TD-S:
-    xacro: chassis_TD-S.xacro
+  ITRI-UGV-4WD050-BP:
+    xacro: chassis_ITRI-UGV-4WD050-BP.xacro
     rviz: static_view.rviz
-    vehicle_param: vehicle_param_TD-S.yaml
-    description: 差速式小型履帶底盤，兩驅動輪 + 兩被動輪
+    vehicle_param: vehicle_param_ITRI-UGV-4WD050-BP.yaml
+    description: 四輪滑差小型底盤，10 吋充氣輪，軸距 0.32 m，50 公斤荷重等級（舊代號 WD-S-D10）
